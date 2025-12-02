@@ -11,8 +11,11 @@ import { ArrowRight, Heart } from "lucide-react";
 import collageImage from "@assets/generated_images/collage_style_image_of_philadelphia_romantic_spots..png";
 
 const formSchema = z.object({
-  email: z.string().email().refine(val => val.endsWith("@upenn.edu"), {
-    message: "Must be a valid @upenn.edu email address",
+  email: z.string().email().refine(val => {
+    const allowedDomains = ["@upenn.edu", "@seas.upenn.edu", "@sas.upenn.edu", "@wharton.upenn.edu"];
+    return allowedDomains.some(domain => val.endsWith(domain));
+  }, {
+    message: "Must be a valid Penn email (@upenn.edu, @seas, @sas, or @wharton)",
   }),
   password: z.string().min(8, "Password must be at least 8 characters"),
 });
@@ -31,6 +34,12 @@ export default function Auth() {
   function onSubmit(values: z.infer<typeof formSchema>) {
     // Mock authentication
     console.log(values);
+    // Store user session in localStorage for prototype persistence
+    localStorage.setItem("user", JSON.stringify({ email: values.email }));
+    
+    // Show success feedback
+    // In a real app, this would be handled by the backend auth response
+    
     setLocation("/survey"); // Redirect to survey first
   }
 
