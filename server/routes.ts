@@ -78,7 +78,7 @@ export async function registerRoutes(
         }
 
         // Don't send password to client
-        const { password: _, ...userWithoutPassword } = user;
+        const { password: _, ...userWithoutPassword } = user as any;
         res.json({ user: userWithoutPassword });
       });
     })(req, res, next);
@@ -97,7 +97,7 @@ export async function registerRoutes(
   // Check authentication status
   app.get("/api/auth/me", (req: Request, res: Response) => {
     if (req.isAuthenticated() && req.user) {
-      const { password: _, ...userWithoutPassword } = req.user;
+      const { password: _, ...userWithoutPassword } = req.user as any;
       res.json({ user: userWithoutPassword });
     } else {
       res.status(401).json({ message: "Not authenticated" });

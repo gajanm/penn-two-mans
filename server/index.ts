@@ -25,7 +25,11 @@ declare module "express-session" {
 
 declare global {
   namespace Express {
-    interface User extends User {}
+    interface User {
+      id: string;
+      email: string;
+      password: string;
+    }
   }
 }
 

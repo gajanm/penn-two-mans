@@ -9,6 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { motion } from "framer-motion";
 import { ArrowRight, Heart } from "lucide-react";
 import collageImage from "@assets/generated_images/collage_style_image_of_philadelphia_romantic_spots..png";
+import { useToast } from "@/hooks/use-toast";
 
 const formSchema = z.object({
   email: z.string().email().refine(val => {
@@ -22,7 +23,9 @@ const formSchema = z.object({
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -31,16 +34,46 @@ export default function Auth() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    // Mock authentication
-    console.log(values);
-    // Store user session in localStorage for prototype persistence
-    localStorage.setItem("user", JSON.stringify({ email: values.email }));
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    setIsLoading(true);
     
-    // Show success feedback
-    // In a real app, this would be handled by the backend auth response
-    
-    setLocation("/survey"); // Redirect to survey first
+    try {
+      const endpoint = isLogin ? "/api/auth/login" : "/api/auth/signup";
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(values),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: data.message || "Something went wrong",
+        });
+        return;
+      }
+
+      toast({
+        title: isLogin ? "Welcome back!" : "Account created!",
+        description: isLogin ? "You've been logged in successfully." : "Your account has been created and you're now logged in.",
+      });
+
+      setLocation("/survey");
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Unable to connect to server. Please try again.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -88,7 +121,12 @@ export default function Auth() {
                   <FormItem>
                     <FormLabel>Penn Email</FormLabel>
                     <FormControl>
-                      <Input placeholder="ben.franklin@upenn.edu" {...field} className="h-12 rounded-xl bg-white/50 border-border focus:border-primary focus:ring-primary/20 transition-all" />
+                      <Input 
+                        data-testid="input-email"
+                        placeholder="ben.franklin@upenn.edu" 
+                        {...field} 
+                        className="h-12 rounded-xl bg-white/50 border-border focus:border-primary focus:ring-primary/20 transition-all" 
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -101,23 +139,37 @@ export default function Auth() {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} className="h-12 rounded-xl bg-white/50 border-border focus:border-primary focus:ring-primary/20 transition-all" />
+                      <Input 
+                        data-testid="input-password"
+                        type="password" 
+                        placeholder="••••••••" 
+                        {...field} 
+                        className="h-12 rounded-xl bg-white/50 border-border focus:border-primary focus:ring-primary/20 transition-all" 
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              <Button type="submit" className="w-full h-12 rounded-xl text-base font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all hover:scale-[1.02]">
-                {isLogin ? "Sign In" : "Create Account"} <ArrowRight className="ml-2 w-4 h-4" />
+              <Button 
+                data-testid="button-submit"
+                type="submit" 
+                disabled={isLoading}
+                className="w-full h-12 rounded-xl text-base font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all hover:scale-[1.02]"
+              >
+                {isLoading ? "Loading..." : (isLogin ? "Sign In" : "Create Account")} 
+                {!isLoading && <ArrowRight className="ml-2 w-4 h-4" />}
               </Button>
             </form>
           </Form>
 
           <div className="text-center">
             <button 
+              data-testid="button-toggle-mode"
               onClick={() => setIsLogin(!isLogin)}
               className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium"
+              disabled={isLoading}
             >
               {isLogin ? "Don't have an account? Sign up" : "Already have an account? Log in"}
             </button>
