@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Calendar, ArrowRight, CheckCircle2, Clock } from "lucide-react";
+import { Users, Calendar, ArrowRight, CheckCircle2, Clock, MapPin } from "lucide-react";
 import { currentUser, friends } from "@/lib/mockData";
 
 export default function Dashboard() {
