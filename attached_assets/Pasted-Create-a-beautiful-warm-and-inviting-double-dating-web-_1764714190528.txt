@@ -1,0 +1,66 @@
+Create a beautiful, warm, and inviting double-dating web application for University of Pennsylvania students. The app should feel fun, welcoming, and romantic while maintaining a sophisticated aesthetic that reflects both Philadelphia's charm and UPenn's culture.
+
+CORE FEATURES & FUNCTIONALITY
+
+1. Authentication System
+Restrict registration and login to @upenn.edu email addresses only with email verification required, secure password authentication, "Remember me" functionality, and proper session management.
+
+2. User Profile & Survey System
+Create a comprehensive profile and compatibility survey covering: Basic Info (age, gender, gender preference for dating), Religion & Spirituality (religious affiliation, importance of faith, spiritual practices), Core Values (what matters most like family, career, adventure, stability, creativity), Lifestyle (social habits, activity level, interests, hobbies, study habits), Emotional Style (communication preferences, conflict resolution, emotional expression), Partnership & Intimacy Style (relationship goals, love languages, boundaries, expectations), and Civics & Ethics (political leanings, social causes, ethical priorities).
+
+3. Partner Selection System
+Users select one same-gender friend as their "double-date partner" for the week. Partners can be changed weekly. Build a visual interface showing friends list and partner selection with smooth interactions.
+
+4. Matching Algorithm
+Implement a sophisticated matching system based on value alignment research (shared core values weighted heavily), Big Five personality compatibility (openness, conscientiousness, extraversion, agreeableness, neuroticism), social psychology principles for romantic compatibility, and complementary vs. similar trait balancing. Generate one 2-person pair match per week for each partnership with matches released every Tuesday.
+
+5. Group Chat & Date Planning
+Built-in group chat for all 4 matched individuals with icebreaker prompts and conversation starters. Date suggestion system that analyzes all 4 people's preferences with curated Philadelphia date ideas (restaurants, activities, venues, events). Include date confirmation and scheduling tools.
+
+6. Philadelphia Integration
+Real Philadelphia location recommendations with filters for budget, vibe, and distance from campus. Integration with Philly events and seasonal activities.
+
+PAGE-BY-PAGE DESIGN REQUIREMENTS - GENERATE ACTUAL DESIGNS FOR EACH
+
+LANDING PAGE - Design and build this page with:
+A hero section with a warm, inviting background image of Philadelphia (golden hour at Love Park or Penn campus in fall with couples walking). Use a warm color palette: soft blush pinks, warm terracottas, cream, sage green accents. Large, friendly headline: "Find Your Perfect Double Date at Penn" with a subheading explaining the concept in welcoming language. Prominent "Sign Up with Penn Email" button with smooth hover effects. Floating imagery with subtle photos of happy friend groups and Philadelphia landmarks (Schuylkill River, Reading Terminal Market, Penn campus). Fun, modern sans-serif typography throughout. Testimonial carousel with photos of happy students. Footer with social links and info. Make it feel warm, inviting, and exciting.
+
+SIGN UP / LOGIN PAGE - Design and build this page with:
+Split-screen layout where the left side shows a beautiful photo collage of Philadelphia date spots and UPenn campus scenes. Right side has clean, minimal form design on a warm gradient background (peachy-pink to soft coral). Email input field with @upenn.edu validation indicator and password field with strength indicator. Smooth animations on form interactions. "New here?" / "Already have an account?" toggle between sign up and login. Illustrated accents like small hearts, stars, and paired icons scattered tastefully.
+
+PROFILE CREATION / SURVEY PAGES - Design and build these pages with:
+Progress bar at top showing survey completion with playful design and icons. Each category on its own page/section with smooth transitions between them. Background using soft, warm gradient or subtle texture. Large, friendly question typography that's easy to read. Multiple choice options displayed as interactive cards with hover effects and relevant icons. Slider components for scale-based questions. Personal photo upload area with fun frame design. Encouraging microcopy throughout like "You're doing great!" and "Almost there!". "Save & Continue" buttons with delightful animations. Sidebar showing profile preview as it builds up.
+
+DASHBOARD / HOME PAGE - Design and build this page with:
+Warm, welcoming header saying "Welcome back, [Name]!" with the user's name. Current week status card prominently displayed showing your partner for the week with their photo, your match status (waiting/matched), and days until next Tuesday. Photo-based layout throughout with rounded corners and soft shadows. Quick action buttons for "Choose Partner", "View Match", and "Chat" with clear visual hierarchy. Background with subtle Philadelphia imagery (watermarked or light overlay). Upcoming dates calendar widget showing past and future dates. Match history carousel at bottom showing previous matches. Warm lighting effects and welcoming color scheme throughout making users feel at home.
+
+PARTNER SELECTION PAGE - Design and build this page with:
+Grid or carousel layout of your same-gender friends who are also on the platform. Each friend shown as a beautiful card displaying their profile photo, name and year, a fun fact or shared interest, and a "Choose as Partner" button. Currently selected partner highlighted with special styling (glow effect, different border, or badge). Warm, encouraging copy at the top: "Who's your wingperson this week?" Background using soft, playful pattern or Philadelphia scene. Animated transitions when selecting or changing partners. Make the selection feel important and exciting.
+
+MATCH REVEAL PAGE (TUESDAYS) - Design and build this page with:
+Exciting reveal animation (cards flipping, confetti effect, sparkles) when the page loads. Large, prominent photos of the matched pair with their names and basic info. Compatibility score displayed visually with a breakdown of why you matched. "Why You Matched" section showing personality insights and shared values in an engaging way. Fun, celebratory aesthetic with confetti or sparkle elements. Philadelphia skyline or landmark subtly in the background. "Start Chatting" button prominently displayed as the primary call-to-action. "See Date Ideas" as a secondary button. Warm, exciting color accents using gold, rose gold, and coral. Make this moment feel special and exciting.
+
+GROUP CHAT PAGE - Design and build this page with:
+4-person header showing all participants' profile photos arranged in a friendly cluster at the top. Clean, modern chat interface below with smooth scrolling. Message bubbles with personality using different subtle colors for each person. Icebreaker prompts displayed at the top as dismissible cards to help start conversation. Date planning section integrated into the chat interface. Emoji picker and GIF support for expressive messaging. Warm background using very light pattern or gradient. Photos of Philadelphia integrated into sidebar or header area. Quick reactions and read receipts so people know when messages are seen. Real-time updates when new messages arrive.
+
+DATE IDEAS PAGE - Design and build this page with:
+Curated card layout of Philadelphia date suggestions displayed in a grid. Each card showing a beautiful photo of the venue/activity, name and type (restaurant, activity, event), brief engaging description, distance from campus, price range indicator, and a "We'd love this!" voting system for the group to vote together. Filter options for budget, vibe (cozy, adventurous, cultural, foodie), and distance from campus. Map view option showing date spot locations around Philadelphia. Seasonal recommendations highlighted in a special section. Save/favorite functionality for ideas people like. Warm, inviting photography of real Philadelphia locations. Interactive elements with smooth animations and hover effects.
+
+PROFILE SETTINGS PAGE - Design and build this page with:
+Clean, organized sections for editing all profile information. Before/after preview of changes before saving. Photo management area for uploading and cropping profile pictures. Survey retake option to update compatibility answers. Preferences toggles with modern switch components for notifications and privacy. Match history section displaying past pairs with photos and dates. Account settings and privacy controls clearly organized. Warm, trustworthy aesthetic that makes users feel secure. Save buttons with confirmation animations showing changes were saved successfully.
+
+OVERALL DESIGN SYSTEM TO IMPLEMENT
+
+Color Palette: Primary colors are soft coral (#FF8B7B) to warm blush (#FFB4A8). Secondary is sage green (#A8C69F) for accents. Tertiary is warm cream (#FFF5EC) for backgrounds. Accent colors are terracotta (#D97757) and gold (#F4A259). Neutrals are warm grays and soft browns. Text is charcoal (#333333) with warm undertone.
+
+Typography: Headings use modern, friendly sans-serif fonts like Poppins, Quicksand, or Montserrat. Body text uses clean, readable sans-serif like Inter or DM Sans. Optional playful script font for special elements and accents.
+
+Visual Elements: Rounded corners throughout (16-24px border radius on all cards and buttons). Soft shadows for depth (never harsh). Subtle gradient overlays on photos. Illustrated icons and accents scattered throughout. Micro-animations and smooth transitions on all interactions. Philadelphia imagery throughout: Love Park, Boathouse Row, Penn campus, Reading Terminal Market, cobblestone streets, Rittenhouse Square. Warm photographic filters (golden hour, warm tones) on all images.
+
+Interactions: Smooth page transitions between all views. Hover effects on all interactive elements. Loading states with personality (animated icons or progress indicators). Success animations using confetti and sparkles for celebratory moments. Haptic-feeling button presses with scale and color changes. Delightful empty states with encouraging copy when no data exists yet.
+
+Technical Implementation: Build with React using functional components and hooks. Implement responsive design (mobile-first approach). Fast load times with optimized images. Secure data handling for all personal information. Real-time chat functionality using WebSocket or similar. Email notifications for matches and messages. Accessibility compliance (WCAG 2.1 standards). Use React state management for user data, matches, and chat. Implement form validation on all inputs.
+
+Tone & Copy Throughout: Warm, friendly, and encouraging language. Slightly playful but always respectful. Inclusive and welcoming to all students. References to UPenn and Philadelphia culture when appropriate. Conversational tone, never clinical or cold. Make every interaction feel personal and thoughtful.
+
+Build this complete application with all pages fully functional and designed exactly as described. Make every interaction feel delightful and every page feel inviting. This should be an app that makes people excited to find connections and explore Philadelphia together. Generate the actual visual designs for each page, not just descriptions.
