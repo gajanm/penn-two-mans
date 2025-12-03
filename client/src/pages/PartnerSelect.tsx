@@ -77,8 +77,14 @@ export default function PartnerSelect() {
       if (profileRes.ok) {
         const profileData = await profileRes.json();
         if (profileData?.partner_id) {
-          const partner = partnersData.find((p: UserProfile) => p.id === profileData.partner_id);
-          if (partner) setCurrentPartner(partner);
+          // Fetch partner directly by ID for reliability
+          const partnerRes = await fetch(`/api/profile/${profileData.partner_id}`, { 
+            headers: { 'Authorization': `Bearer ${token}` } 
+          });
+          if (partnerRes.ok) {
+            const partnerData = await partnerRes.json();
+            setCurrentPartner(partnerData);
+          }
         }
       }
 
@@ -267,6 +273,40 @@ export default function PartnerSelect() {
     );
   }
 
+  const unpairFromPartner = async () => {
+    setIsSaving(true);
+    try {
+      const token = await getToken();
+      if (!token) throw new Error("Not authenticated");
+
+      const response = await fetch('/api/partner/unpair', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || 'Failed to unpair');
+      }
+
+      toast({
+        title: "Unpaired Successfully",
+        description: "You can now find a new partner for this week.",
+      });
+
+      setCurrentPartner(null);
+      fetchData();
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to unpair.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (currentPartner) {
     const displayName = currentPartner.full_name || currentPartner.email.split('@')[0];
     return (
@@ -282,9 +322,20 @@ export default function PartnerSelect() {
             {getInitials(displayName)}
           </div>
           <h3 className="font-heading font-bold text-xl">{displayName}</h3>
-          <p className="text-muted-foreground text-sm">
-            {currentPartner.major} '{currentPartner.graduation_year?.slice(-2)}
+          <p className="text-muted-foreground text-sm mb-6">
+            {currentPartner.major ? `${currentPartner.major} '${currentPartner.graduation_year?.slice(-2) || '??'}` : 'Your partner for this week'}
           </p>
+          
+          <Button 
+            variant="outline" 
+            className="rounded-full text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+            onClick={unpairFromPartner}
+            disabled={isSaving}
+            data-testid="button-unpair"
+          >
+            {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <X className="w-4 h-4 mr-2" />}
+            Unpair from Partner
+          </Button>
         </div>
       </div>
     );

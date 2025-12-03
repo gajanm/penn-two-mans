@@ -1,16 +1,98 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Calendar, ArrowRight, CheckCircle2, Clock, MapPin } from "lucide-react";
-import { currentUser, friends, getInitials, getAvatarColor } from "@/lib/mockData";
+import { Card, CardContent } from "@/components/ui/card";
+import { Users, Calendar, ArrowRight, CheckCircle2, Clock, MapPin, UserPlus, Loader2 } from "lucide-react";
+import { getInitials, getAvatarColor } from "@/lib/mockData";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabase";
+import { useToast } from "@/hooks/use-toast";
+
+interface PartnerProfile {
+  id: string;
+  email: string;
+  full_name: string | null;
+  major: string | null;
+  graduation_year: string | null;
+}
+
+interface UserProfile {
+  id: string;
+  email: string;
+  full_name: string | null;
+  partner_id: string | null;
+}
 
 export default function Dashboard() {
-  const partner = friends.find(f => f.id === currentUser.partnerId);
   const { user } = useAuth();
-  const userName = user?.email?.split('@')[0] || currentUser.name;
+  const { toast } = useToast();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [partner, setPartner] = useState<PartnerProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [pendingInvites, setPendingInvites] = useState(0);
+
+  const userName = profile?.full_name || user?.email?.split('@')[0] || 'there';
+
+  async function getToken() {
+    const { data: sessionData } = await supabase.auth.getSession();
+    return sessionData?.session?.access_token;
+  }
+
+  async function fetchData() {
+    try {
+      const token = await getToken();
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
+      const [profileRes, invitesRes] = await Promise.all([
+        fetch('/api/profile', { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch('/api/partner-invites', { headers: { 'Authorization': `Bearer ${token}` } })
+      ]);
+
+      if (profileRes.ok) {
+        const profileData = await profileRes.json();
+        setProfile(profileData);
+
+        if (profileData?.partner_id) {
+          // Fetch partner directly by ID for reliability
+          const partnerRes = await fetch(`/api/profile/${profileData.partner_id}`, { 
+            headers: { 'Authorization': `Bearer ${token}` } 
+          });
+          if (partnerRes.ok) {
+            const partnerData = await partnerRes.json();
+            setPartner(partnerData);
+          }
+        }
+      }
+
+      if (invitesRes.ok) {
+        const invitesData = await invitesRes.json();
+        const pendingCount = invitesData.received?.filter((i: any) => i.status === 'pending').length || 0;
+        setPendingInvites(pendingCount);
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (user) {
+      fetchData();
+    }
+  }, [user]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -21,13 +103,18 @@ export default function Dashboard() {
           <p className="text-muted-foreground">Here's what's happening with your double date journey this week.</p>
         </div>
         <Link href="/partner">
-          <Button className="rounded-full shadow-md hover:shadow-lg transition-all">
-            Change Partner <Users className="ml-2 w-4 h-4" />
+          <Button className="rounded-full shadow-md hover:shadow-lg transition-all relative" data-testid="button-change-partner">
+            {partner ? 'Change Partner' : 'Find Partner'} <Users className="ml-2 w-4 h-4" />
+            {pendingInvites > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                {pendingInvites}
+              </span>
+            )}
           </Button>
         </Link>
       </div>
 
-      {/* Status Card */}
+      {/* Partner Status Card */}
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -38,62 +125,94 @@ export default function Dashboard() {
           <div className="absolute bottom-0 left-0 w-48 h-48 bg-secondary/10 rounded-full -ml-12 -mb-12" />
           
           <CardContent className="p-8 relative z-10">
-            <div className="flex flex-col md:flex-row items-center gap-8">
-              {/* Partner Info */}
-              <div className="flex items-center gap-4 flex-1">
-                <div className="relative">
-                  <div className={`w-20 h-20 rounded-full border-4 border-white shadow-md flex items-center justify-center text-white font-bold text-xl ${getAvatarColor(userName)}`}>
-                    {getInitials(userName)}
+            {partner ? (
+              <div className="flex flex-col md:flex-row items-center gap-8">
+                {/* Partner Info */}
+                <div className="flex items-center gap-4 flex-1">
+                  <div className="relative">
+                    <div className={`w-20 h-20 rounded-full border-4 border-white shadow-md flex items-center justify-center text-white font-bold text-xl ${getAvatarColor(userName)}`}>
+                      {getInitials(userName)}
+                    </div>
+                    <div className={`w-20 h-20 rounded-full border-4 border-white shadow-md -ml-8 absolute top-0 left-12 flex items-center justify-center text-white font-bold text-xl ${getAvatarColor(partner.full_name || partner.email)}`}>
+                      {getInitials(partner.full_name || partner.email.split('@')[0])}
+                    </div>
                   </div>
-                  <div className={`w-20 h-20 rounded-full border-4 border-white shadow-md -ml-8 absolute top-0 left-12 flex items-center justify-center text-white font-bold text-xl ${getAvatarColor(partner?.name || 'Partner')}`}>
-                    {getInitials(partner?.name || 'Partner')}
+                  <div className="ml-14">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-heading font-bold text-xl" data-testid="text-partner-status">
+                        You & {partner.full_name || partner.email.split('@')[0]}
+                      </h3>
+                      <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-medium border border-green-200">
+                        Active Pair
+                      </span>
+                    </div>
+                    <p className="text-muted-foreground text-sm mt-1">
+                      {partner.major ? `${partner.major} '${partner.graduation_year?.slice(-2) || '??'}` : 'Ready for this week\'s match!'}
+                    </p>
                   </div>
                 </div>
-                <div className="ml-14">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-heading font-bold text-xl">You & {partner?.name}</h3>
-                    <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-medium border border-green-200">
-                      Active Pair
-                    </span>
-                  </div>
-                  <p className="text-muted-foreground text-sm mt-1">Ready for this week's match!</p>
-                </div>
-              </div>
 
-              {/* Status Divider */}
-              <div className="h-px w-full md:w-px md:h-16 bg-border" />
+                {/* Status Divider */}
+                <div className="h-px w-full md:w-px md:h-16 bg-border" />
 
-              {/* Match Status */}
-              <div className="flex-1 flex flex-col items-center md:items-start gap-2">
-                <span className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Current Status</span>
-                {currentUser.matchStatus === "matched" ? (
-                  <div className="flex items-center gap-2 text-primary font-bold text-xl">
-                    <CheckCircle2 className="w-6 h-6" />
-                    Matched!
-                  </div>
-                ) : (
+                {/* Match Status */}
+                <div className="flex-1 flex flex-col items-center md:items-start gap-2">
+                  <span className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Current Status</span>
                   <div className="flex items-center gap-2 text-muted-foreground font-bold text-xl">
                     <Clock className="w-6 h-6" />
                     Waiting for Tuesday...
                   </div>
-                )}
-              </div>
+                </div>
 
-              {/* Action */}
-              <div>
-                 {currentUser.matchStatus === "matched" ? (
-                   <Link href="/match">
-                     <Button size="lg" className="rounded-full bg-gradient-to-r from-primary to-tertiary hover:opacity-90 transition-opacity shadow-lg shadow-primary/25">
-                       View Your Match <ArrowRight className="ml-2 w-5 h-5" />
-                     </Button>
-                   </Link>
-                 ) : (
-                   <Button disabled variant="outline" className="rounded-full">
-                     Matches release Tuesday
-                   </Button>
-                 )}
+                {/* Action */}
+                <div>
+                  <Button disabled variant="outline" className="rounded-full">
+                    Matches release Tuesday
+                  </Button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex flex-col md:flex-row items-center gap-8">
+                {/* No Partner State */}
+                <div className="flex items-center gap-4 flex-1">
+                  <div className="relative">
+                    <div className={`w-20 h-20 rounded-full border-4 border-white shadow-md flex items-center justify-center text-white font-bold text-xl ${getAvatarColor(userName)}`}>
+                      {getInitials(userName)}
+                    </div>
+                    <div className="w-20 h-20 rounded-full border-4 border-white shadow-md -ml-8 absolute top-0 left-12 flex items-center justify-center bg-gray-100 border-dashed border-gray-300">
+                      <UserPlus className="w-8 h-8 text-gray-400" />
+                    </div>
+                  </div>
+                  <div className="ml-14">
+                    <h3 className="font-heading font-bold text-xl text-gray-600" data-testid="text-no-partner">
+                      No Partner Yet
+                    </h3>
+                    <p className="text-muted-foreground text-sm mt-1">Find a friend to be your wingperson!</p>
+                  </div>
+                </div>
+
+                {/* Status Divider */}
+                <div className="h-px w-full md:w-px md:h-16 bg-border" />
+
+                {/* Status */}
+                <div className="flex-1 flex flex-col items-center md:items-start gap-2">
+                  <span className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Status</span>
+                  <div className="flex items-center gap-2 text-amber-600 font-bold text-lg">
+                    <UserPlus className="w-5 h-5" />
+                    Partner Needed
+                  </div>
+                </div>
+
+                {/* Action */}
+                <div>
+                  <Link href="/partner">
+                    <Button size="lg" className="rounded-full bg-gradient-to-r from-primary to-tertiary hover:opacity-90 transition-opacity shadow-lg shadow-primary/25" data-testid="button-find-partner">
+                      Find a Partner <ArrowRight className="ml-2 w-5 h-5" />
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </motion.div>

@@ -237,6 +237,28 @@ export async function registerRoutes(
     }
   });
 
+  // Get a specific profile by ID (for fetching partner info)
+  app.get("/api/profile/:id", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const profileId = req.params.id;
+      
+      const { data: profile, error } = await supabaseAdmin
+        .from('profiles')
+        .select('id, email, full_name, major, graduation_year, gender')
+        .eq('id', profileId)
+        .single();
+
+      if (error || !profile) {
+        return res.status(404).json({ message: "Profile not found" });
+      }
+
+      res.json(profile);
+    } catch (error) {
+      console.error("Profile fetch error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   app.post("/api/survey", authenticateToken, async (req: Request, res: Response) => {
     try {
       const user = (req as any).user;
@@ -549,6 +571,62 @@ export async function registerRoutes(
       res.json({ message: "Invite cancelled" });
     } catch (error) {
       console.error("Cancel invite error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Unpair from partner
+  app.post("/api/partner/unpair", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+
+      // Get current user's profile to find partner
+      const { data: profile, error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .select('partner_id')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError || !profile) {
+        return res.status(404).json({ message: "Profile not found" });
+      }
+
+      if (!profile.partner_id) {
+        return res.status(400).json({ message: "You don't have a partner to unpair from" });
+      }
+
+      const partnerId = profile.partner_id;
+
+      // Verify mutual pairing before clearing
+      const { data: partnerProfile } = await supabaseAdmin
+        .from('profiles')
+        .select('partner_id')
+        .eq('id', partnerId)
+        .single();
+
+      if (partnerProfile?.partner_id !== user.id) {
+        // Partner's side is already inconsistent, just clear current user
+        await supabaseAdmin
+          .from('profiles')
+          .update({ partner_id: null })
+          .eq('id', user.id);
+        return res.json({ message: "Successfully unpaired" });
+      }
+
+      // Atomic update: Remove partner_id from both users in a single query
+      const { error: updateError } = await supabaseAdmin
+        .from('profiles')
+        .update({ partner_id: null })
+        .in('id', [user.id, partnerId]);
+
+      if (updateError) {
+        console.error("Unpair update error:", updateError);
+        return res.status(500).json({ message: "Failed to unpair" });
+      }
+
+      res.json({ message: "Successfully unpaired from partner" });
+    } catch (error) {
+      console.error("Unpair error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
