@@ -155,13 +155,29 @@ export async function registerRoutes(
     try {
       const user = (req as any).user;
       
-      const { data: profile, error } = await supabaseAdmin
+      let { data: profile, error } = await supabaseAdmin
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single();
 
-      if (error) {
+      if (error && error.code === 'PGRST116') {
+        const { data: newProfile, error: createError } = await supabaseAdmin
+          .from('profiles')
+          .insert({
+            id: user.id,
+            email: user.email,
+          })
+          .select()
+          .single();
+
+        if (createError) {
+          console.error("Profile creation error:", createError);
+          return res.status(500).json({ message: "Failed to create profile" });
+        }
+
+        profile = newProfile;
+      } else if (error) {
         return res.status(404).json({ message: "Profile not found" });
       }
 
