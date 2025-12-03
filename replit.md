@@ -23,6 +23,7 @@ Preferred communication style: Simple, everyday language.
 - **UI Components:** shadcn/ui component library with Radix UI primitives
 - **Animations:** Framer Motion for page transitions and interactive elements
 - **Forms:** React Hook Form with Zod validation
+- **Authentication:** Supabase Auth with AuthContext provider
 
 **Design Decisions:**
 - Uses a custom warm color palette (blush pinks, terracotta, sage green) for inviting aesthetic
@@ -30,6 +31,7 @@ Preferred communication style: Simple, everyday language.
 - Mobile-first responsive design with dedicated mobile navigation
 - Component-based architecture with reusable UI primitives
 - Path aliases (@/, @shared, @assets) for clean imports
+- ProtectedRoute component wraps all authenticated pages
 
 **Key Pages:**
 - Landing: Marketing page with hero section
@@ -47,75 +49,76 @@ Preferred communication style: Simple, everyday language.
 **Technology Stack:**
 - **Runtime:** Node.js with TypeScript
 - **Framework:** Express.js
-- **Database ORM:** Drizzle ORM
-- **Authentication:** Passport.js with local strategy
-- **Session Management:** Express-session
-- **Password Hashing:** bcrypt
-- **Validation:** Zod with drizzle-zod integration
+- **Database:** Supabase (PostgreSQL)
+- **Authentication:** Supabase Auth with server-side validation
+- **Validation:** Zod for request body validation
 
 **Design Decisions:**
 - RESTful API design with /api prefix
-- Session-based authentication (not JWT)
-- Email domain validation enforced at schema level
-- Separation of storage layer through IStorage interface
-- Build process bundles server dependencies for faster cold starts
-- Development mode includes HMR via Vite middleware
+- Server-side Penn email domain validation before user creation
+- Service Role Key used for secure user creation (bypasses client restrictions)
+- Token-based authentication via Supabase JWT
+- All protected endpoints verify tokens via authenticateToken middleware
 
 **API Structure:**
-- POST /api/auth/signup - User registration with email validation
-- POST /api/auth/login - Authentication via Passport local strategy
-- Protected routes require isAuthenticated middleware
+- POST /api/auth/signup - User registration with Penn email validation (uses service role)
+- POST /api/auth/login - Authentication via Supabase
+- GET /api/profile - Get user profile (requires auth)
+- PUT /api/profile - Update user profile (requires auth)
+- POST /api/survey - Save survey responses (requires auth)
+- GET /api/survey - Get survey responses (requires auth)
 
 **Data Models:**
-Currently implements basic user schema with:
-- id (UUID primary key)
-- email (unique, validated against Penn domains)
-- password (bcrypt hashed)
-
-Note: Additional tables for profiles, partners, matches, messages, and preferences are planned but not yet implemented.
+Supabase tables:
+- profiles: User profile data (id, email, full_name, gender, interested_in, graduation_year, major, height, survey_completed)
+- survey_responses: Survey answers (id, user_id, answers JSONB, created_at, updated_at)
 
 ### Database Design
 
-**ORM:** Drizzle with PostgreSQL dialect via Neon serverless driver
+**Platform:** Supabase (PostgreSQL)
 
-**Schema Location:** shared/schema.ts for type sharing between client/server
-
-**Current Tables:**
-- users: Basic authentication data
+**Tables:**
+- profiles: User profile data linked to Supabase Auth users
+- survey_responses: JSONB storage for survey answers
 
 **Email Validation:**
-Custom Zod refinement ensures emails end with approved Penn domains:
+Server-side Zod refinement ensures emails end with approved Penn domains:
 - @upenn.edu
 - @seas.upenn.edu
 - @sas.upenn.edu
 - @wharton.upenn.edu
 
-**Migration Strategy:**
-- Migrations stored in /migrations directory
-- Schema changes via drizzle-kit push command
-- Connection pooling via @neondatabase/serverless
+**Row Level Security:**
+Both tables have RLS policies to ensure users can only access their own data.
 
 ### Authentication & Authorization
 
-**Strategy:** Passport.js Local Strategy with session persistence
+**Strategy:** Supabase Auth with server-side domain validation
 
 **Flow:**
-1. User submits email/password
-2. Email validated against Penn domain whitelist
-3. Password hashed with bcrypt (10 rounds)
-4. User created and automatically logged in
-5. Session stored server-side
-6. Subsequent requests authenticated via deserializeUser
+1. User submits email/password to /api/auth/signup
+2. Server validates email against Penn domain whitelist using Zod
+3. Server creates user via Supabase Admin API (service role key)
+4. Email auto-confirmed for verified Penn domains
+5. Session returned to client and stored via Supabase client
+6. Protected routes check auth state via AuthContext
+7. API requests include JWT token in Authorization header
 
-**Session Configuration:**
-- Secret from environment variable (SESSION_SECRET)
-- Not saved until login (saveUninitialized: false)
-- Cookie-based session tracking
+**Security Configuration:**
+- SUPABASE_SERVICE_ROLE_KEY: Server-only key for creating users
+- SUPABASE_ANON_KEY: Client-side key for authenticated operations
+- Penn email validation enforced server-side before user creation
+
+**IMPORTANT Security Requirement:**
+To fully prevent bypassing Penn email restrictions, you must disable email signup in Supabase:
+1. Go to Supabase Dashboard → Authentication → Providers → Email
+2. Turn OFF "Enable Email Signup"
+This forces all signups through the server endpoint which validates Penn emails.
 
 **Protected Routes:**
-- isAuthenticated middleware checks req.isAuthenticated()
+- ProtectedRoute component redirects unauthenticated users to /auth
+- authenticateToken middleware verifies JWT on API endpoints
 - Returns 401 for unauthorized access
-- Query client configured to handle 401 responses
 
 ### Build & Deployment
 
@@ -133,16 +136,18 @@ Custom Zod refinement ensures emails end with approved Penn domains:
 5. Fallback to index.html for client-side routing
 
 **Environment Requirements:**
-- DATABASE_URL for PostgreSQL connection
-- SESSION_SECRET for session encryption
+- SUPABASE_URL: Supabase project URL
+- SUPABASE_ANON_KEY: Public anonymous key
+- SUPABASE_SERVICE_ROLE_KEY: Service role key (server-side only)
+- VITE_SUPABASE_URL: Client-side Supabase URL
+- VITE_SUPABASE_ANON_KEY: Client-side anonymous key
 - NODE_ENV for environment detection
 
 ## External Dependencies
 
-### Database
-- **Neon Serverless PostgreSQL:** Cloud-hosted PostgreSQL with WebSocket support
-- **Connection:** Via @neondatabase/serverless package
-- **ORM:** Drizzle for type-safe queries
+### Database & Auth
+- **Supabase:** PostgreSQL database with built-in authentication
+- **@supabase/supabase-js:** JavaScript client SDK
 
 ### UI Component Libraries
 - **Radix UI:** Headless accessible components (dialogs, dropdowns, tooltips, etc.)
@@ -166,13 +171,17 @@ Custom Zod refinement ensures emails end with approved Penn domains:
 - **React Hook Form:** Form state and validation
 - **Zod:** Schema validation shared between client/server
 
-### Authentication & Security
-- **Passport.js:** Authentication middleware
-- **bcrypt:** Password hashing
-- **express-session:** Session management
-- **connect-pg-simple:** PostgreSQL session store (imported but not configured)
-
 ### Asset Management
 - Generated images stored in attached_assets/generated_images/
 - Philadelphia and campus imagery for landing and auth pages
 - OpenGraph/Twitter card meta tags with dynamic image URLs
+
+## Recent Changes
+
+### December 3, 2025 - Supabase Migration
+- Migrated from Replit PostgreSQL + Passport.js to Supabase
+- Implemented Supabase Auth with server-side Penn email validation
+- Added AuthContext for managing authentication state
+- Created ProtectedRoute component for route protection
+- Added service role key support for secure user creation
+- Updated all API endpoints with token authentication and Zod validation

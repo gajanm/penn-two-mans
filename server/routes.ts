@@ -1,6 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { supabase } from "./supabase";
+import { supabase, supabaseAdmin } from "./supabase";
 import { z } from "zod";
 
 const pennEmailSchema = z.string().email().refine(email => {
@@ -66,9 +66,11 @@ export async function registerRoutes(
 
       const { email, password } = result.data;
 
-      const { data, error } = await supabase.auth.signUp({
+      // Use admin client to create user (bypasses any client-side restrictions)
+      const { data, error } = await supabaseAdmin.auth.admin.createUser({
         email,
         password,
+        email_confirm: true, // Auto-confirm email for Penn users
       });
 
       if (error) {
@@ -76,7 +78,8 @@ export async function registerRoutes(
       }
 
       if (data.user) {
-        const { error: profileError } = await supabase
+        // Create profile using admin client (bypasses RLS)
+        const { error: profileError } = await supabaseAdmin
           .from('profiles')
           .insert({
             id: data.user.id,
@@ -86,12 +89,33 @@ export async function registerRoutes(
         if (profileError) {
           console.error("Profile creation error:", profileError);
         }
+
+        // Sign in the user to get a session
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (signInError) {
+          // User created but couldn't sign in - they can login manually
+          return res.status(201).json({ 
+            user: data.user,
+            session: null,
+            message: "Account created! Please log in."
+          });
+        }
+
+        return res.status(201).json({ 
+          user: data.user,
+          session: signInData.session,
+          message: "Account created and logged in"
+        });
       }
 
       res.status(201).json({ 
         user: data.user,
-        session: data.session,
-        message: data.session ? "Account created and logged in" : "Please check your email to verify your account"
+        session: null,
+        message: "Account created"
       });
     } catch (error) {
       console.error("Signup error:", error);
