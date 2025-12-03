@@ -54,3 +54,9 @@ waitForPort = 5000
 [agent]
 mockupState = "FULLSTACK"
 integrations = ["javascript_database:1.0.0"]
+
+[userenv]
+
+[userenv.shared]
+VITE_SUPABASE_URL = "https://itahbaxibivigqzaigqk.supabase.co"
+VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml0YWhiYXhpYml2aWdxemFpZ3FrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM3NTE3MzAsImV4cCI6MjA3OTMyNzczMH0.O9dyQqIDeiNK8Tg6VTFKXNgbYAgha0PRk-Tr1EqiVXw"
