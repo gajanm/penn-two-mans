@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,8 +7,11 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { ArrowRight, ArrowLeft, Heart, Sparkles, Users, Calendar, MessageCircle, Zap, Check, User } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { ArrowRight, ArrowLeft, Heart, Sparkles, Users, Calendar, MessageCircle, Zap, Check, User, ChevronsUpDown } from "lucide-react";
 import { useLocation } from "wouter";
+import { cn } from "@/lib/utils";
 
 const sections = [
   { id: "about", title: "About You", description: "Let's get to know you", icon: User, color: "from-violet-500 to-purple-500" },
@@ -53,6 +56,50 @@ function formatHeight(inches: number): string {
   const feet = Math.floor(inches / 12);
   const remainingInches = inches % 12;
   return `${feet}'${remainingInches}"`;
+}
+
+function ScrollableOptions({ children }: { children: React.ReactNode }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [showGradient, setShowGradient] = useState(false);
+
+  useEffect(() => {
+    const checkScroll = () => {
+      if (scrollRef.current) {
+        const { scrollHeight, clientHeight, scrollTop } = scrollRef.current;
+        const isScrollable = scrollHeight > clientHeight;
+        const isAtBottom = scrollTop + clientHeight >= scrollHeight - 10;
+        setShowGradient(isScrollable && !isAtBottom);
+      }
+    };
+
+    checkScroll();
+    const el = scrollRef.current;
+    if (el) {
+      el.addEventListener('scroll', checkScroll);
+      window.addEventListener('resize', checkScroll);
+    }
+
+    return () => {
+      if (el) {
+        el.removeEventListener('scroll', checkScroll);
+        window.removeEventListener('resize', checkScroll);
+      }
+    };
+  }, [children]);
+
+  return (
+    <div className="relative">
+      <div 
+        ref={scrollRef}
+        className="space-y-3 max-h-[380px] overflow-y-auto pr-2 pb-4"
+      >
+        {children}
+      </div>
+      {showGradient && (
+        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none" />
+      )}
+    </div>
+  );
 }
 
 export default function Survey() {
@@ -221,7 +268,7 @@ export default function Survey() {
                     )}
                   </div>
 
-                  <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+                  <ScrollableOptions>
                     {currentQ?.type === "single" ? (
                       <RadioGroup 
                         value={currentAnswer as string || ""} 
@@ -297,7 +344,7 @@ export default function Survey() {
                         })}
                       </div>
                     )}
-                  </div>
+                  </ScrollableOptions>
                 </>
               )}
             </div>
@@ -346,152 +393,185 @@ function ProfileSection({
   handleInterestedIn: (value: string) => void;
 }) {
   const interestedIn = (answers.interestedIn as string[]) || [];
+  const [majorOpen, setMajorOpen] = useState(false);
   
   return (
-    <div className="space-y-6 max-h-[500px] overflow-y-auto pr-2">
-      <div className="text-center mb-6">
-        <h3 className="font-heading font-bold text-2xl text-foreground">Tell us about yourself</h3>
-        <p className="text-muted-foreground mt-1">This helps us find your perfect match</p>
-      </div>
+    <div className="relative">
+      <div className="space-y-6 max-h-[500px] overflow-y-auto pr-2 pb-4">
+        <div className="text-center mb-6">
+          <h3 className="font-heading font-bold text-2xl text-foreground">Tell us about yourself</h3>
+          <p className="text-muted-foreground mt-1">This helps us find your perfect match</p>
+        </div>
 
-      <div className="space-y-2">
-        <Label className="text-sm font-semibold">Full Name</Label>
-        <Input 
-          placeholder="Enter your full name"
-          value={(answers.fullName as string) || ""}
-          onChange={(e) => setAnswers({ ...answers, fullName: e.target.value })}
-          className="h-12 rounded-xl border-2 focus:border-primary"
-          data-testid="input-fullname"
-        />
-      </div>
+        <div className="space-y-2">
+          <Label className="text-sm font-semibold">Full Name</Label>
+          <Input 
+            placeholder="Enter your full name"
+            value={(answers.fullName as string) || ""}
+            onChange={(e) => setAnswers({ ...answers, fullName: e.target.value })}
+            className="h-12 rounded-xl border-2 focus:border-primary"
+            data-testid="input-fullname"
+          />
+        </div>
 
-      <div className="space-y-3">
-        <Label className="text-sm font-semibold">I identify as</Label>
-        <RadioGroup 
-          value={(answers.gender as string) || ""} 
-          onValueChange={(value) => setAnswers({ ...answers, gender: value })}
-          className="flex gap-3"
-        >
-          {["Male", "Female", "Nonbinary"].map((option) => (
-            <label 
-              key={option}
-              className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                answers.gender === option 
-                  ? 'border-primary bg-primary/10' 
-                  : 'border-border hover:border-primary/50'
-              }`}
-            >
-              <RadioGroupItem value={option} className="sr-only" />
-              <span className={`font-medium ${answers.gender === option ? 'text-primary' : ''}`}>{option}</span>
-            </label>
-          ))}
-        </RadioGroup>
-      </div>
-
-      <div className="space-y-3">
-        <Label className="text-sm font-semibold">I'm interested in matching with</Label>
-        <div className="flex gap-3">
-          {["Male", "Female", "Nonbinary"].map((option) => {
-            const isSelected = interestedIn.includes(option);
-            return (
+        <div className="space-y-3">
+          <Label className="text-sm font-semibold">I identify as</Label>
+          <RadioGroup 
+            value={(answers.gender as string) || ""} 
+            onValueChange={(value) => setAnswers({ ...answers, gender: value })}
+            className="flex gap-3"
+          >
+            {["Male", "Female", "Nonbinary"].map((option) => (
               <label 
                 key={option}
                 className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                  isSelected 
+                  answers.gender === option 
                     ? 'border-primary bg-primary/10' 
                     : 'border-border hover:border-primary/50'
                 }`}
               >
-                <Checkbox 
-                  checked={isSelected}
-                  onCheckedChange={() => handleInterestedIn(option)}
-                  className="sr-only"
-                />
-                <span className={`font-medium ${isSelected ? 'text-primary' : ''}`}>{option}</span>
-                {isSelected && <Check className="w-4 h-4 text-primary" />}
+                <RadioGroupItem value={option} className="sr-only" />
+                <span className={`font-medium ${answers.gender === option ? 'text-primary' : ''}`}>{option}</span>
               </label>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label className="text-sm font-semibold">Graduation Year</Label>
-          <Select 
-            value={(answers.graduationYear as string) || ""}
-            onValueChange={(value) => setAnswers({ ...answers, graduationYear: value })}
-          >
-            <SelectTrigger className="h-12 rounded-xl border-2">
-              <SelectValue placeholder="Select year" />
-            </SelectTrigger>
-            <SelectContent>
-              {graduationYears.map((year) => (
-                <SelectItem key={year} value={year}>{year}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            ))}
+          </RadioGroup>
         </div>
 
-        <div className="space-y-2">
-          <Label className="text-sm font-semibold">Major</Label>
-          <Select 
-            value={(answers.major as string) || ""}
-            onValueChange={(value) => setAnswers({ ...answers, major: value })}
-          >
-            <SelectTrigger className="h-12 rounded-xl border-2">
-              <SelectValue placeholder="Select major" />
-            </SelectTrigger>
-            <SelectContent className="max-h-[300px]">
-              {majors.map((major) => (
-                <SelectItem key={major} value={major}>{major}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="space-y-3">
+          <Label className="text-sm font-semibold">I'm interested in matching with</Label>
+          <div className="flex gap-3">
+            {["Male", "Female", "Nonbinary"].map((option) => {
+              const isSelected = interestedIn.includes(option);
+              return (
+                <label 
+                  key={option}
+                  className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                    isSelected 
+                      ? 'border-primary bg-primary/10' 
+                      : 'border-border hover:border-primary/50'
+                  }`}
+                >
+                  <Checkbox 
+                    checked={isSelected}
+                    onCheckedChange={() => handleInterestedIn(option)}
+                    className="sr-only"
+                  />
+                  <span className={`font-medium ${isSelected ? 'text-primary' : ''}`}>{option}</span>
+                  {isSelected && <Check className="w-4 h-4 text-primary" />}
+                </label>
+              );
+            })}
+          </div>
         </div>
-      </div>
 
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <Label className="text-sm font-semibold">My Height</Label>
-          <span className="text-lg font-bold text-primary">{formatHeight(answers.height as number)}</span>
-        </div>
-        <Slider
-          value={[answers.height as number]}
-          onValueChange={(value) => setAnswers({ ...answers, height: value[0] })}
-          min={58}
-          max={84}
-          step={1}
-          className="py-4"
-        />
-        <div className="flex justify-between text-xs text-muted-foreground">
-          <span>4'10"</span>
-          <span>7'0"</span>
-        </div>
-      </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">Graduation Year</Label>
+            <Select 
+              value={(answers.graduationYear as string) || ""}
+              onValueChange={(value) => setAnswers({ ...answers, graduationYear: value })}
+            >
+              <SelectTrigger className="h-12 rounded-xl border-2">
+                <SelectValue placeholder="Select year" />
+              </SelectTrigger>
+              <SelectContent>
+                {graduationYears.map((year) => (
+                  <SelectItem key={year} value={year}>{year}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <Label className="text-sm font-semibold">Partner Height Preference</Label>
-          <span className="text-lg font-bold text-primary">
-            {formatHeight(answers.partnerHeightMin as number)} - {formatHeight(answers.partnerHeightMax as number)}
-          </span>
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">Major</Label>
+            <Popover open={majorOpen} onOpenChange={setMajorOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={majorOpen}
+                  className="w-full h-12 rounded-xl border-2 justify-between font-normal"
+                >
+                  <span className={cn("truncate", !answers.major && "text-muted-foreground")}>
+                    {answers.major ? (answers.major as string) : "Search major..."}
+                  </span>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[300px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search major..." />
+                  <CommandList>
+                    <CommandEmpty>No major found.</CommandEmpty>
+                    <CommandGroup className="max-h-[300px] overflow-y-auto">
+                      {majors.map((major) => (
+                        <CommandItem
+                          key={major}
+                          value={major}
+                          onSelect={() => {
+                            setAnswers({ ...answers, major: major });
+                            setMajorOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              answers.major === major ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {major}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
-        <Slider
-          value={[answers.partnerHeightMin as number, answers.partnerHeightMax as number]}
-          onValueChange={(value) => setAnswers({ 
-            ...answers, 
-            partnerHeightMin: value[0],
-            partnerHeightMax: value[1]
-          })}
-          min={58}
-          max={84}
-          step={1}
-          className="py-4"
-        />
-        <div className="flex justify-between text-xs text-muted-foreground">
-          <span>4'10"</span>
-          <span>7'0"</span>
+
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <Label className="text-sm font-semibold">My Height</Label>
+            <span className="text-lg font-bold text-primary">{formatHeight(answers.height as number)}</span>
+          </div>
+          <Slider
+            value={[answers.height as number]}
+            onValueChange={(value) => setAnswers({ ...answers, height: value[0] })}
+            min={58}
+            max={84}
+            step={1}
+            className="py-4"
+          />
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>4'10"</span>
+            <span>7'0"</span>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <Label className="text-sm font-semibold">Partner Height Preference</Label>
+            <span className="text-lg font-bold text-primary">
+              {formatHeight(answers.partnerHeightMin as number)} - {formatHeight(answers.partnerHeightMax as number)}
+            </span>
+          </div>
+          <Slider
+            value={[answers.partnerHeightMin as number, answers.partnerHeightMax as number]}
+            onValueChange={(value) => setAnswers({ 
+              ...answers, 
+              partnerHeightMin: value[0],
+              partnerHeightMax: value[1]
+            })}
+            min={58}
+            max={84}
+            step={1}
+            className="py-4"
+          />
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>4'10"</span>
+            <span>7'0"</span>
+          </div>
         </div>
       </div>
     </div>
@@ -694,7 +774,7 @@ function getQuestionsForSection(sectionIndex: number): Question[] {
         }
       ];
 
-    case 4: // YOUR LIFE (5 questions)
+    case 4: // YOUR LIFE (7 questions - updated with split going out questions)
       return [
         {
           id: "q13_hobbies",
@@ -734,20 +814,46 @@ function getQuestionsForSection(sectionIndex: number): Question[] {
         },
         {
           id: "q15_going_out",
-          question: "Your relationship with going out:",
+          question: "How often do you go out (parties, bars, clubs)?",
           type: "single",
           options: [
-            "I don't drink - personal choice",
-            "Barely ever - special occasions only",
-            "Yeah I go out - it's part of college",
-            "Going out is definitely part of my social life",
-            "I also smoke occasionally",
-            "I smoke pretty regularly",
-            "Still figuring out my vibe"
+            "Multiple times a week - it's a big part of my life",
+            "Most weekends - Thursday through Saturday",
+            "Some weekends - maybe twice a month",
+            "Occasionally - once a month or for special events",
+            "Rarely - a few times a semester",
+            "Never - not my scene at all"
           ]
         },
         {
-          id: "q16_mess",
+          id: "q16_alcohol",
+          question: "Your relationship with alcohol:",
+          type: "single",
+          options: [
+            "I don't drink at all",
+            "Very rarely - maybe a few times a year",
+            "Occasionally - special occasions and events",
+            "Socially - most weekends when I go out",
+            "Regularly - it's part of my social life",
+            "Still figuring out my limits and preferences"
+          ]
+        },
+        {
+          id: "q17_weed",
+          question: "Your relationship with weed:",
+          type: "single",
+          options: [
+            "I don't smoke and prefer not to be around it",
+            "I don't smoke but don't mind if others do",
+            "Occasionally - like a few times a semester",
+            "Socially - when I'm out with friends",
+            "Regularly - it's part of my routine",
+            "Daily or near-daily",
+            "Not my thing but totally fine with it"
+          ]
+        },
+        {
+          id: "q18_mess",
           question: "The mess tolerance question:",
           type: "single",
           options: [
@@ -759,7 +865,7 @@ function getQuestionsForSection(sectionIndex: number): Question[] {
           ]
         },
         {
-          id: "q17_morning_night",
+          id: "q19_morning_night",
           question: "Morning person or night owl?",
           type: "single",
           options: [
@@ -775,7 +881,7 @@ function getQuestionsForSection(sectionIndex: number): Question[] {
     case 5: // HOW YOU LOVE (5 questions)
       return [
         {
-          id: "q18_show_interest",
+          id: "q20_show_interest",
           question: "The way you show someone you're into them:",
           type: "single",
           options: [
@@ -789,7 +895,7 @@ function getQuestionsForSection(sectionIndex: number): Question[] {
           ]
         },
         {
-          id: "q19_dynamic",
+          id: "q21_dynamic",
           question: "Your ideal relationship dynamic:",
           type: "single",
           options: [
@@ -802,7 +908,7 @@ function getQuestionsForSection(sectionIndex: number): Question[] {
           ]
         },
         {
-          id: "q20_emotional",
+          id: "q22_emotional",
           question: "Opening up emotionally:",
           type: "single",
           options: [
@@ -815,7 +921,7 @@ function getQuestionsForSection(sectionIndex: number): Question[] {
           ]
         },
         {
-          id: "q21_privacy",
+          id: "q23_privacy",
           question: "The privacy talk:",
           type: "single",
           options: [
@@ -827,7 +933,7 @@ function getQuestionsForSection(sectionIndex: number): Question[] {
           ]
         },
         {
-          id: "q22_physical",
+          id: "q24_physical",
           question: "Physical affection in a relationship:",
           type: "single",
           options: [
@@ -843,7 +949,7 @@ function getQuestionsForSection(sectionIndex: number): Question[] {
     case 6: // STAYING CONNECTED (2 questions)
       return [
         {
-          id: "q23_texting",
+          id: "q25_texting",
           question: "Your texting personality:",
           type: "single",
           options: [
@@ -856,7 +962,7 @@ function getQuestionsForSection(sectionIndex: number): Question[] {
           ]
         },
         {
-          id: "q24_friend_groups",
+          id: "q26_friend_groups",
           question: "Friend groups and relationships:",
           type: "single",
           options: [
@@ -873,7 +979,7 @@ function getQuestionsForSection(sectionIndex: number): Question[] {
     case 7: // THE NON-NEGOTIABLES (1 question)
       return [
         {
-          id: "q25_dealbreakers",
+          id: "q27_dealbreakers",
           question: "Absolute deal-breakers:",
           type: "multi",
           options: [
