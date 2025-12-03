@@ -68,15 +68,16 @@ export default function PartnerSelect() {
         fetch('/api/partner-invites', { headers: { 'Authorization': `Bearer ${token}` } })
       ]);
 
+      let partnersData: UserProfile[] = [];
       if (partnersRes.ok) {
-        const partnersData = await partnersRes.json();
+        partnersData = await partnersRes.json();
         setUsers(partnersData || []);
       }
       
       if (profileRes.ok) {
         const profileData = await profileRes.json();
         if (profileData?.partner_id) {
-          const partner = (await partnersRes.json())?.find((p: UserProfile) => p.id === profileData.partner_id);
+          const partner = partnersData.find((p: UserProfile) => p.id === profileData.partner_id);
           if (partner) setCurrentPartner(partner);
         }
       }
