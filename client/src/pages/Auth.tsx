@@ -10,6 +10,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, Heart } from "lucide-react";
 import collageImage from "@assets/generated_images/collage_style_image_of_philadelphia_romantic_spots..png";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabase";
 
 const formSchema = z.object({
   email: z.string().email().refine(val => {
@@ -38,33 +39,68 @@ export default function Auth() {
     setIsLoading(true);
     
     try {
-      const endpoint = isLogin ? "/api/auth/login" : "/api/auth/signup";
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(values),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: data.message || "Something went wrong",
+      if (isLogin) {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: values.email,
+          password: values.password,
         });
-        return;
+
+        if (error) {
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: error.message,
+          });
+          return;
+        }
+
+        toast({
+          title: "Welcome back!",
+          description: "You've been logged in successfully.",
+        });
+
+        setLocation("/survey");
+      } else {
+        const { data, error } = await supabase.auth.signUp({
+          email: values.email,
+          password: values.password,
+        });
+
+        if (error) {
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: error.message,
+          });
+          return;
+        }
+
+        if (data.user) {
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert({
+              id: data.user.id,
+              email: values.email,
+            });
+
+          if (profileError) {
+            console.error("Profile creation error:", profileError);
+          }
+        }
+
+        if (data.session) {
+          toast({
+            title: "Account created!",
+            description: "Your account has been created and you're now logged in.",
+          });
+          setLocation("/survey");
+        } else {
+          toast({
+            title: "Check your email!",
+            description: "We've sent you a confirmation link to verify your account.",
+          });
+        }
       }
-
-      toast({
-        title: isLogin ? "Welcome back!" : "Account created!",
-        description: isLogin ? "You've been logged in successfully." : "Your account has been created and you're now logged in.",
-      });
-
-      setLocation("/survey");
     } catch (error) {
       toast({
         variant: "destructive",
@@ -78,7 +114,6 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen flex bg-background">
-      {/* Left Side - Image Collage */}
       <div className="hidden lg:block w-1/2 relative overflow-hidden">
         <div className="absolute inset-0 bg-primary/20 z-10 mix-blend-multiply" />
         <img 
@@ -92,7 +127,6 @@ export default function Auth() {
         </div>
       </div>
 
-      {/* Right Side - Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 relative bg-gradient-to-br from-background via-white to-primary/5">
         <motion.div 
           initial={{ opacity: 0, x: 20 }}

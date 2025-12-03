@@ -7,8 +7,11 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { ArrowRight, ArrowLeft, Heart, Sparkles, Users, Calendar, MessageCircle, Zap, Check, User, Search } from "lucide-react";
+import { ArrowRight, ArrowLeft, Heart, Sparkles, Users, Calendar, MessageCircle, Zap, Check, User, Search, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabase";
+import { useToast } from "@/hooks/use-toast";
 
 const sections = [
   { id: "about", title: "About You", description: "Let's get to know you", icon: User, color: "from-violet-500 to-purple-500" },
@@ -181,11 +184,20 @@ export default function Survey() {
   const [currentSection, setCurrentSection] = useState(0);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [, setLocation] = useLocation();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user, loading } = useAuth();
+  const { toast } = useToast();
   const [answers, setAnswers] = useState<SurveyData>({
     height: 66,
     partnerHeightMin: 58,
     partnerHeightMax: 78,
   });
+
+  useEffect(() => {
+    if (!loading && !user) {
+      setLocation("/auth");
+    }
+  }, [user, loading, setLocation]);
 
   const questions = getQuestionsForSection(currentSection);
   const totalQuestions = sections.reduce((acc, _, idx) => acc + getQuestionsForSection(idx).length, 0);
@@ -238,6 +250,81 @@ export default function Survey() {
     }
   };
 
+  const saveSurveyToSupabase = async () => {
+    if (!user) return;
+    
+    setIsSubmitting(true);
+    try {
+      const profileData = {
+        full_name: answers.fullName as string,
+        gender: answers.gender as string,
+        interested_in: answers.interestedIn as string[],
+        graduation_year: answers.graduationYear as string,
+        major: answers.major as string,
+        height: answers.height as number,
+        partner_height_min: answers.partnerHeightMin as number,
+        partner_height_max: answers.partnerHeightMax as number,
+        survey_completed: true,
+      };
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update(profileData)
+        .eq('id', user.id);
+
+      if (profileError) {
+        throw profileError;
+      }
+
+      const surveyAnswers = { ...answers };
+      delete surveyAnswers.fullName;
+      delete surveyAnswers.gender;
+      delete surveyAnswers.interestedIn;
+      delete surveyAnswers.graduationYear;
+      delete surveyAnswers.major;
+      delete surveyAnswers.height;
+      delete surveyAnswers.partnerHeightMin;
+      delete surveyAnswers.partnerHeightMax;
+
+      const { data: existingSurvey } = await supabase
+        .from('survey_responses')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (existingSurvey) {
+        const { error: updateError } = await supabase
+          .from('survey_responses')
+          .update({ answers: surveyAnswers, updated_at: new Date().toISOString() })
+          .eq('user_id', user.id);
+
+        if (updateError) throw updateError;
+      } else {
+        const { error: insertError } = await supabase
+          .from('survey_responses')
+          .insert({ user_id: user.id, answers: surveyAnswers });
+
+        if (insertError) throw insertError;
+      }
+
+      toast({
+        title: "Survey complete!",
+        description: "Your profile has been saved successfully.",
+      });
+
+      setLocation("/dashboard");
+    } catch (error: any) {
+      console.error("Error saving survey:", error);
+      toast({
+        variant: "destructive",
+        title: "Error saving survey",
+        description: error.message || "Please try again.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const nextQuestion = () => {
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
@@ -245,9 +332,17 @@ export default function Survey() {
       setCurrentSection(currentSection + 1);
       setCurrentQuestion(0);
     } else {
-      setLocation("/dashboard");
+      saveSurveyToSupabase();
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   const prevQuestion = () => {
     if (currentQuestion > 0) {
@@ -436,15 +531,17 @@ export default function Survey() {
               </Button>
               <Button 
                 onClick={nextQuestion}
-                disabled={!canProceed}
+                disabled={!canProceed || isSubmitting}
                 className={`rounded-full px-8 h-12 shadow-lg transition-all duration-300 ${
-                  canProceed 
+                  canProceed && !isSubmitting
                     ? `bg-gradient-to-r ${sections[currentSection].color} hover:shadow-xl hover:scale-105` 
                     : 'bg-muted'
                 }`}
                 data-testid="button-next"
               >
-                {isLastQuestion ? (
+                {isSubmitting ? (
+                  <>Saving... <Loader2 className="ml-2 w-4 h-4 animate-spin" /></>
+                ) : isLastQuestion ? (
                   <>Complete <Check className="ml-2 w-4 h-4" /></>
                 ) : (
                   <>Next <ArrowRight className="ml-2 w-4 h-4" /></>

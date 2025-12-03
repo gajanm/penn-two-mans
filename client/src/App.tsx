@@ -16,6 +16,7 @@ import Settings from "@/pages/Settings";
 import { AnimatePresence } from "framer-motion";
 import React from "react";
 import Layout from "./components/Layout";
+import { AuthProvider } from "./contexts/AuthContext";
 
 function Router() {
   const [location] = useLocation();
@@ -56,10 +57,12 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
