@@ -16,7 +16,7 @@ export default function PartnerSelect() {
     setSelectedPartnerId(id);
     toast({
       title: "Partner Updated!",
-      description: `You've selected ${name} as your wingperson for this week.`,
+      description: `You've selected ${name} asIf I your wingperson for this week.`,
       duration: 3000,
     });
   };
