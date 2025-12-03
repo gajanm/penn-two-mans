@@ -1,12 +1,17 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowRight, ArrowLeft, Heart, Sparkles, Users, Calendar, MessageCircle, Home, Check, Zap } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
+import { ArrowRight, ArrowLeft, Heart, Sparkles, Users, Calendar, MessageCircle, Zap, Check, User } from "lucide-react";
 import { useLocation } from "wouter";
 
 const sections = [
+  { id: "about", title: "About You", description: "Let's get to know you", icon: User, color: "from-violet-500 to-purple-500" },
   { id: "basics", title: "The Basics", description: "Let's start simple", icon: Heart, color: "from-rose-500 to-pink-500" },
   { id: "vision", title: "Life Vision & Priorities", description: "Where are you headed?", icon: Sparkles, color: "from-amber-500 to-orange-500" },
   { id: "personality", title: "Your Personality", description: "Who are you really?", icon: Users, color: "from-emerald-500 to-teal-500" },
@@ -16,15 +21,49 @@ const sections = [
   { id: "dealbreakers", title: "The Non-Negotiables", description: "What's off the table?", icon: Zap, color: "from-rose-500 to-red-500" },
 ];
 
+const majors = [
+  "Accounting", "Africana Studies", "African American Studies", "African Diaspora Studies", "African Studies",
+  "Ancient History", "Anthropology", "Architecture", "Artificial Intelligence", "Artificial Intelligence for Business",
+  "Behavioral Economics", "Biochemistry", "Bioengineering", "Biology", "Biophysics", "Biomedical Science",
+  "Business Analytics", "Business Economics and Public Policy", "Chemical and Biomolecular Engineering", "Chemistry",
+  "Cinema and Media Studies", "Classical Studies", "Cognitive Science", "Communication", "Comparative Literature",
+  "Computer Engineering", "Computer Science", "Criminology", "Design", "Digital Media Design",
+  "Earth and Environmental Science", "East Asian Languages and Civilizations", "Economics", "Electrical Engineering",
+  "English", "Entrepreneurship and Innovation", "Environmental Studies", "Environmental, Social, and Governance Factors for Business",
+  "Finance", "Fine Arts", "Francophone, Italian and Germanic Studies", "Gender, Sexuality, & Women's Studies",
+  "Health and Societies", "Health Care Management and Policy", "Hispanic Studies", "History", "History of Art",
+  "Individualized", "International Relations", "International Studies", "Jewish Studies",
+  "Latin American & Latinx Studies", "Law and Society", "Leading Across Differences", "Legal Studies & Business Ethics",
+  "Linguistics", "Logic, Information, & Computation", "Management", "Marketing", "Marketing & Communication",
+  "Marketing & Operations Management", "Materials Science and Engineering", "Mathematical Economics", "Mathematics",
+  "Mechanical Engineering and Applied Mechanics", "Middle Eastern Languages & Cultures", "Modern Middle Eastern Studies",
+  "Music", "Neuroscience", "Nursing", "Nutrition Science", "Operations, Information & Decisions", "Philosophy",
+  "Philosophy, Politics and Economics", "Physics", "Political Science", "Psychology", "Real Estate", "Religious Studies",
+  "Retailing", "Russian and East European Studies", "Science, Technology and Society", "Sociology", "South Asia Studies",
+  "Statistics and Data Science", "Theatre Arts", "Urban Studies", "Visual Studies"
+];
+
+const graduationYears = ["2025", "2026", "2027", "2028", "2029"];
+
 type SurveyData = {
-  [key: string]: string | string[];
+  [key: string]: string | string[] | number | number[];
 };
+
+function formatHeight(inches: number): string {
+  const feet = Math.floor(inches / 12);
+  const remainingInches = inches % 12;
+  return `${feet}'${remainingInches}"`;
+}
 
 export default function Survey() {
   const [currentSection, setCurrentSection] = useState(0);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [, setLocation] = useLocation();
-  const [answers, setAnswers] = useState<SurveyData>({});
+  const [answers, setAnswers] = useState<SurveyData>({
+    height: 66,
+    partnerHeightMin: 58,
+    partnerHeightMax: 78,
+  });
 
   const questions = getQuestionsForSection(currentSection);
   const totalQuestions = sections.reduce((acc, _, idx) => acc + getQuestionsForSection(idx).length, 0);
@@ -34,9 +73,25 @@ export default function Survey() {
   const currentQ = questions[currentQuestion];
   const currentAnswer = answers[currentQ?.id];
 
-  const canProceed = currentQ?.type === "multi" 
-    ? Array.isArray(currentAnswer) && currentAnswer.length > 0 && currentAnswer.length <= (currentQ.maxSelect || 999)
-    : !!currentAnswer;
+  const canProceed = (() => {
+    if (!currentQ) return false;
+    
+    if (currentQ.type === "profile") {
+      const name = answers.fullName as string;
+      const gender = answers.gender as string;
+      const interestedIn = answers.interestedIn as string[];
+      const major = answers.major as string;
+      const gradYear = answers.graduationYear as string;
+      
+      return !!(name && name.trim().length > 0 && gender && interestedIn && interestedIn.length > 0 && major && gradYear);
+    }
+    
+    if (currentQ.type === "multi") {
+      return Array.isArray(currentAnswer) && currentAnswer.length > 0 && currentAnswer.length <= (currentQ.maxSelect || 999);
+    }
+    
+    return !!currentAnswer;
+  })();
 
   const handleAnswer = (value: string) => {
     if (currentQ.type === "multi") {
@@ -49,6 +104,15 @@ export default function Survey() {
       }
     } else {
       setAnswers({ ...answers, [currentQ.id]: value });
+    }
+  };
+
+  const handleInterestedIn = (value: string) => {
+    const current = (answers.interestedIn as string[]) || [];
+    if (current.includes(value)) {
+      setAnswers({ ...answers, interestedIn: current.filter(v => v !== value) });
+    } else {
+      setAnswers({ ...answers, interestedIn: [...current, value] });
     }
   };
 
@@ -130,101 +194,112 @@ export default function Survey() {
             className="h-full flex flex-col"
           >
             <div className="bg-white p-8 rounded-3xl shadow-xl border border-border/50 mb-6 flex-1">
-              <div className="mb-6">
-                <span className="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium mb-3">
-                  Question {completedQuestions + 1} of {totalQuestions}
-                </span>
-                <h3 className="font-heading font-bold text-2xl text-foreground leading-tight">
-                  {currentQ?.question}
-                </h3>
-                {currentQ?.type === "multi" && currentQ.maxSelect && (
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Pick your top {currentQ.maxSelect}
-                  </p>
-                )}
-                {currentQ?.type === "multi" && !currentQ.maxSelect && (
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Check whatever applies
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
-                {currentQ?.type === "single" ? (
-                  <RadioGroup 
-                    value={currentAnswer as string || ""} 
-                    onValueChange={handleAnswer}
-                    className="space-y-3"
-                  >
-                    {currentQ.options.map((option, idx) => (
-                      <motion.div
-                        key={option}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: idx * 0.05 }}
-                      >
-                        <label 
-                          htmlFor={option}
-                          className={`flex items-center gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200 hover:border-primary/50 hover:bg-primary/5 ${
-                            currentAnswer === option 
-                              ? 'border-primary bg-primary/10 shadow-md' 
-                              : 'border-border/50 bg-white'
-                          }`}
-                        >
-                          <RadioGroupItem value={option} id={option} className="sr-only" />
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                            currentAnswer === option 
-                              ? 'border-primary bg-primary' 
-                              : 'border-muted-foreground/30'
-                          }`}>
-                            {currentAnswer === option && (
-                              <motion.div
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                className="w-2 h-2 rounded-full bg-white"
-                              />
-                            )}
-                          </div>
-                          <span className={`flex-1 font-medium ${currentAnswer === option ? 'text-primary' : 'text-foreground'}`}>
-                            {option}
-                          </span>
-                        </label>
-                      </motion.div>
-                    ))}
-                  </RadioGroup>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {currentQ?.options.map((option, idx) => {
-                      const isSelected = Array.isArray(currentAnswer) && currentAnswer.includes(option);
-                      return (
-                        <motion.div
-                          key={option}
-                          initial={{ opacity: 0, scale: 0.95 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: idx * 0.03 }}
-                        >
-                          <label 
-                            className={`flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200 hover:border-primary/50 hover:bg-primary/5 ${
-                              isSelected 
-                                ? 'border-primary bg-primary/10 shadow-md' 
-                                : 'border-border/50 bg-white'
-                            }`}
-                          >
-                            <Checkbox 
-                              checked={isSelected}
-                              onCheckedChange={() => handleAnswer(option)}
-                              className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                            />
-                            <span className={`flex-1 text-sm font-medium ${isSelected ? 'text-primary' : 'text-foreground'}`}>
-                              {option}
-                            </span>
-                          </label>
-                        </motion.div>
-                      );
-                    })}
+              {currentQ?.type === "profile" ? (
+                <ProfileSection 
+                  answers={answers} 
+                  setAnswers={setAnswers}
+                  handleInterestedIn={handleInterestedIn}
+                />
+              ) : (
+                <>
+                  <div className="mb-6">
+                    <span className="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium mb-3">
+                      Question {completedQuestions + 1} of {totalQuestions}
+                    </span>
+                    <h3 className="font-heading font-bold text-2xl text-foreground leading-tight">
+                      {currentQ?.question}
+                    </h3>
+                    {currentQ?.type === "multi" && currentQ.maxSelect && (
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Pick your top {currentQ.maxSelect}
+                      </p>
+                    )}
+                    {currentQ?.type === "multi" && !currentQ.maxSelect && (
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Check whatever applies
+                      </p>
+                    )}
                   </div>
-                )}
-              </div>
+
+                  <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+                    {currentQ?.type === "single" ? (
+                      <RadioGroup 
+                        value={currentAnswer as string || ""} 
+                        onValueChange={handleAnswer}
+                        className="space-y-3"
+                      >
+                        {currentQ.options.map((option, idx) => (
+                          <motion.div
+                            key={option}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: idx * 0.05 }}
+                          >
+                            <label 
+                              htmlFor={option}
+                              className={`flex items-center gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200 hover:border-primary/50 hover:bg-primary/5 ${
+                                currentAnswer === option 
+                                  ? 'border-primary bg-primary/10 shadow-md' 
+                                  : 'border-border/50 bg-white'
+                              }`}
+                            >
+                              <RadioGroupItem value={option} id={option} className="sr-only" />
+                              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                                currentAnswer === option 
+                                  ? 'border-primary bg-primary' 
+                                  : 'border-muted-foreground/30'
+                              }`}>
+                                {currentAnswer === option && (
+                                  <motion.div
+                                    initial={{ scale: 0 }}
+                                    animate={{ scale: 1 }}
+                                    className="w-2 h-2 rounded-full bg-white"
+                                  />
+                                )}
+                              </div>
+                              <span className={`flex-1 font-medium ${currentAnswer === option ? 'text-primary' : 'text-foreground'}`}>
+                                {option}
+                              </span>
+                            </label>
+                          </motion.div>
+                        ))}
+                      </RadioGroup>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {currentQ?.options.map((option, idx) => {
+                          const selectedOptions = (currentAnswer as string[]) || [];
+                          const isSelected = selectedOptions.includes(option);
+                          return (
+                            <motion.div
+                              key={option}
+                              initial={{ opacity: 0, scale: 0.95 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{ delay: idx * 0.03 }}
+                            >
+                              <label 
+                                className={`flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200 hover:border-primary/50 hover:bg-primary/5 ${
+                                  isSelected 
+                                    ? 'border-primary bg-primary/10 shadow-md' 
+                                    : 'border-border/50 bg-white'
+                                }`}
+                              >
+                                <Checkbox 
+                                  checked={isSelected}
+                                  onCheckedChange={() => handleAnswer(option)}
+                                  className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                />
+                                <span className={`flex-1 text-sm font-medium ${isSelected ? 'text-primary' : 'text-foreground'}`}>
+                                  {option}
+                                </span>
+                              </label>
+                            </motion.div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="flex justify-between gap-4">
@@ -261,17 +336,189 @@ export default function Survey() {
   );
 }
 
+function ProfileSection({ 
+  answers, 
+  setAnswers,
+  handleInterestedIn 
+}: { 
+  answers: SurveyData; 
+  setAnswers: React.Dispatch<React.SetStateAction<SurveyData>>;
+  handleInterestedIn: (value: string) => void;
+}) {
+  const interestedIn = (answers.interestedIn as string[]) || [];
+  
+  return (
+    <div className="space-y-6 max-h-[500px] overflow-y-auto pr-2">
+      <div className="text-center mb-6">
+        <h3 className="font-heading font-bold text-2xl text-foreground">Tell us about yourself</h3>
+        <p className="text-muted-foreground mt-1">This helps us find your perfect match</p>
+      </div>
+
+      <div className="space-y-2">
+        <Label className="text-sm font-semibold">Full Name</Label>
+        <Input 
+          placeholder="Enter your full name"
+          value={(answers.fullName as string) || ""}
+          onChange={(e) => setAnswers({ ...answers, fullName: e.target.value })}
+          className="h-12 rounded-xl border-2 focus:border-primary"
+          data-testid="input-fullname"
+        />
+      </div>
+
+      <div className="space-y-3">
+        <Label className="text-sm font-semibold">I identify as</Label>
+        <RadioGroup 
+          value={(answers.gender as string) || ""} 
+          onValueChange={(value) => setAnswers({ ...answers, gender: value })}
+          className="flex gap-3"
+        >
+          {["Male", "Female", "Nonbinary"].map((option) => (
+            <label 
+              key={option}
+              className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                answers.gender === option 
+                  ? 'border-primary bg-primary/10' 
+                  : 'border-border hover:border-primary/50'
+              }`}
+            >
+              <RadioGroupItem value={option} className="sr-only" />
+              <span className={`font-medium ${answers.gender === option ? 'text-primary' : ''}`}>{option}</span>
+            </label>
+          ))}
+        </RadioGroup>
+      </div>
+
+      <div className="space-y-3">
+        <Label className="text-sm font-semibold">I'm interested in matching with</Label>
+        <div className="flex gap-3">
+          {["Male", "Female", "Nonbinary"].map((option) => {
+            const isSelected = interestedIn.includes(option);
+            return (
+              <label 
+                key={option}
+                className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                  isSelected 
+                    ? 'border-primary bg-primary/10' 
+                    : 'border-border hover:border-primary/50'
+                }`}
+              >
+                <Checkbox 
+                  checked={isSelected}
+                  onCheckedChange={() => handleInterestedIn(option)}
+                  className="sr-only"
+                />
+                <span className={`font-medium ${isSelected ? 'text-primary' : ''}`}>{option}</span>
+                {isSelected && <Check className="w-4 h-4 text-primary" />}
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label className="text-sm font-semibold">Graduation Year</Label>
+          <Select 
+            value={(answers.graduationYear as string) || ""}
+            onValueChange={(value) => setAnswers({ ...answers, graduationYear: value })}
+          >
+            <SelectTrigger className="h-12 rounded-xl border-2">
+              <SelectValue placeholder="Select year" />
+            </SelectTrigger>
+            <SelectContent>
+              {graduationYears.map((year) => (
+                <SelectItem key={year} value={year}>{year}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-sm font-semibold">Major</Label>
+          <Select 
+            value={(answers.major as string) || ""}
+            onValueChange={(value) => setAnswers({ ...answers, major: value })}
+          >
+            <SelectTrigger className="h-12 rounded-xl border-2">
+              <SelectValue placeholder="Select major" />
+            </SelectTrigger>
+            <SelectContent className="max-h-[300px]">
+              {majors.map((major) => (
+                <SelectItem key={major} value={major}>{major}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <Label className="text-sm font-semibold">My Height</Label>
+          <span className="text-lg font-bold text-primary">{formatHeight(answers.height as number)}</span>
+        </div>
+        <Slider
+          value={[answers.height as number]}
+          onValueChange={(value) => setAnswers({ ...answers, height: value[0] })}
+          min={58}
+          max={84}
+          step={1}
+          className="py-4"
+        />
+        <div className="flex justify-between text-xs text-muted-foreground">
+          <span>4'10"</span>
+          <span>7'0"</span>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <Label className="text-sm font-semibold">Partner Height Preference</Label>
+          <span className="text-lg font-bold text-primary">
+            {formatHeight(answers.partnerHeightMin as number)} - {formatHeight(answers.partnerHeightMax as number)}
+          </span>
+        </div>
+        <Slider
+          value={[answers.partnerHeightMin as number, answers.partnerHeightMax as number]}
+          onValueChange={(value) => setAnswers({ 
+            ...answers, 
+            partnerHeightMin: value[0],
+            partnerHeightMax: value[1]
+          })}
+          min={58}
+          max={84}
+          step={1}
+          className="py-4"
+        />
+        <div className="flex justify-between text-xs text-muted-foreground">
+          <span>4'10"</span>
+          <span>7'0"</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 type Question = {
   id: string;
   question: string;
-  type: "single" | "multi";
+  type: "single" | "multi" | "profile";
   options: string[];
   maxSelect?: number;
 };
 
 function getQuestionsForSection(sectionIndex: number): Question[] {
   switch (sectionIndex) {
-    case 0: // THE BASICS (3 questions)
+    case 0: // ABOUT YOU (Profile section)
+      return [
+        {
+          id: "profile",
+          question: "Tell us about yourself",
+          type: "profile",
+          options: []
+        }
+      ];
+
+    case 1: // THE BASICS (3 questions)
       return [
         {
           id: "q1_looking_for",
@@ -311,7 +558,7 @@ function getQuestionsForSection(sectionIndex: number): Question[] {
         }
       ];
 
-    case 1: // LIFE VISION & PRIORITIES (3 questions)
+    case 2: // LIFE VISION & PRIORITIES (3 questions)
       return [
         {
           id: "q4_five_years",
@@ -360,7 +607,7 @@ function getQuestionsForSection(sectionIndex: number): Question[] {
         }
       ];
 
-    case 2: // YOUR PERSONALITY (6 questions)
+    case 3: // YOUR PERSONALITY (6 questions)
       return [
         {
           id: "q7_friday_night",
@@ -447,7 +694,7 @@ function getQuestionsForSection(sectionIndex: number): Question[] {
         }
       ];
 
-    case 3: // YOUR LIFE (5 questions)
+    case 4: // YOUR LIFE (5 questions)
       return [
         {
           id: "q13_hobbies",
@@ -525,7 +772,7 @@ function getQuestionsForSection(sectionIndex: number): Question[] {
         }
       ];
 
-    case 4: // HOW YOU LOVE (5 questions)
+    case 5: // HOW YOU LOVE (5 questions)
       return [
         {
           id: "q18_show_interest",
@@ -593,7 +840,7 @@ function getQuestionsForSection(sectionIndex: number): Question[] {
         }
       ];
 
-    case 5: // STAYING CONNECTED (2 questions)
+    case 6: // STAYING CONNECTED (2 questions)
       return [
         {
           id: "q23_texting",
@@ -623,7 +870,7 @@ function getQuestionsForSection(sectionIndex: number): Question[] {
         }
       ];
 
-    case 6: // THE NON-NEGOTIABLES (1 question)
+    case 7: // THE NON-NEGOTIABLES (1 question)
       return [
         {
           id: "q25_dealbreakers",
