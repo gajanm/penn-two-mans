@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -11,6 +11,7 @@ import { ArrowRight, Heart } from "lucide-react";
 import collageImage from "@assets/generated_images/collage_style_image_of_philadelphia_romantic_spots..png";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
 
 const formSchema = z.object({
   email: z.string().email().refine(val => {
@@ -27,6 +28,8 @@ export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { user, loading } = useAuth();
+  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -34,6 +37,12 @@ export default function Auth() {
       password: "",
     },
   });
+
+  useEffect(() => {
+    if (!loading && user) {
+      setLocation("/survey");
+    }
+  }, [user, loading, setLocation]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
@@ -59,36 +68,33 @@ export default function Auth() {
           description: "You've been logged in successfully.",
         });
 
-        setLocation("/survey");
+        setLocation("/dashboard");
       } else {
-        const { data, error } = await supabase.auth.signUp({
-          email: values.email,
-          password: values.password,
+        const response = await fetch("/api/auth/signup", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(values),
         });
 
-        if (error) {
+        const data = await response.json();
+
+        if (!response.ok) {
           toast({
             variant: "destructive",
             title: "Error",
-            description: error.message,
+            description: data.message || "Failed to create account",
           });
           return;
         }
 
-        if (data.user) {
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .insert({
-              id: data.user.id,
-              email: values.email,
-            });
-
-          if (profileError) {
-            console.error("Profile creation error:", profileError);
-          }
-        }
-
         if (data.session) {
+          await supabase.auth.setSession({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
+          });
+          
           toast({
             title: "Account created!",
             description: "Your account has been created and you're now logged in.",
@@ -110,6 +116,14 @@ export default function Auth() {
     } finally {
       setIsLoading(false);
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
   }
 
   return (

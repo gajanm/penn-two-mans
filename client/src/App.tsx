@@ -17,6 +17,7 @@ import { AnimatePresence } from "framer-motion";
 import React from "react";
 import Layout from "./components/Layout";
 import { AuthProvider } from "./contexts/AuthContext";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function Router() {
   const [location] = useLocation();
@@ -26,26 +27,42 @@ function Router() {
       <Switch location={location} key={location}>
         <Route path="/" component={Landing} />
         <Route path="/auth" component={Auth} />
-        <Route path="/survey" component={Survey} />
+        <Route path="/survey">
+          <ProtectedRoute>
+            <Survey />
+          </ProtectedRoute>
+        </Route>
         
         {/* Protected Routes wrapped in Layout */}
         <Route path="/dashboard">
-          <Layout><Dashboard /></Layout>
+          <ProtectedRoute>
+            <Layout><Dashboard /></Layout>
+          </ProtectedRoute>
         </Route>
         <Route path="/partner">
-          <Layout><PartnerSelect /></Layout>
+          <ProtectedRoute>
+            <Layout><PartnerSelect /></Layout>
+          </ProtectedRoute>
         </Route>
         <Route path="/match">
-          <Layout><MatchReveal /></Layout>
+          <ProtectedRoute>
+            <Layout><MatchReveal /></Layout>
+          </ProtectedRoute>
         </Route>
         <Route path="/chat">
-          <Layout><Chat /></Layout>
+          <ProtectedRoute>
+            <Layout><Chat /></Layout>
+          </ProtectedRoute>
         </Route>
         <Route path="/dates">
-          <Layout><DateIdeas /></Layout>
+          <ProtectedRoute>
+            <Layout><DateIdeas /></Layout>
+          </ProtectedRoute>
         </Route>
         <Route path="/settings">
-          <Layout><Settings /></Layout>
+          <ProtectedRoute>
+            <Layout><Settings /></Layout>
+          </ProtectedRoute>
         </Route>
 
         <Route component={NotFound} />
