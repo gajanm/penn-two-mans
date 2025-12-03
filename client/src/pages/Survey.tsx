@@ -3,17 +3,17 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowRight, ArrowLeft, Heart, Sparkles, Users, Calendar, MessageCircle, Home, Check } from "lucide-react";
+import { ArrowRight, ArrowLeft, Heart, Sparkles, Users, Calendar, MessageCircle, Home, Check, Zap } from "lucide-react";
 import { useLocation } from "wouter";
 
 const sections = [
-  { id: "intentions", title: "Relationship Intentions", description: "What are you looking for?", icon: Heart, color: "from-rose-500 to-pink-500" },
-  { id: "values", title: "Core Values & Beliefs", description: "What matters most to you?", icon: Sparkles, color: "from-amber-500 to-orange-500" },
-  { id: "personality", title: "Personality", description: "How do you connect?", icon: Users, color: "from-emerald-500 to-teal-500" },
-  { id: "lifestyle", title: "Lifestyle", description: "How do you spend your time?", icon: Calendar, color: "from-blue-500 to-indigo-500" },
-  { id: "intimacy", title: "Partnership Style", description: "How do you love?", icon: Heart, color: "from-purple-500 to-violet-500" },
-  { id: "communication", title: "Communication", description: "How do you connect?", icon: MessageCircle, color: "from-cyan-500 to-blue-500" },
-  { id: "future", title: "Future & Deal-Breakers", description: "What's non-negotiable?", icon: Home, color: "from-rose-500 to-red-500" },
+  { id: "basics", title: "The Basics", description: "Let's start simple", icon: Heart, color: "from-rose-500 to-pink-500" },
+  { id: "vision", title: "Life Vision & Priorities", description: "Where are you headed?", icon: Sparkles, color: "from-amber-500 to-orange-500" },
+  { id: "personality", title: "Your Personality", description: "Who are you really?", icon: Users, color: "from-emerald-500 to-teal-500" },
+  { id: "life", title: "Your Life", description: "How do you spend your time?", icon: Calendar, color: "from-blue-500 to-indigo-500" },
+  { id: "love", title: "How You Love", description: "Your relationship style", icon: Heart, color: "from-purple-500 to-violet-500" },
+  { id: "connection", title: "Staying Connected", description: "Communication matters", icon: MessageCircle, color: "from-cyan-500 to-blue-500" },
+  { id: "dealbreakers", title: "The Non-Negotiables", description: "What's off the table?", icon: Zap, color: "from-rose-500 to-red-500" },
 ];
 
 type SurveyData = {
@@ -132,14 +132,19 @@ export default function Survey() {
             <div className="bg-white p-8 rounded-3xl shadow-xl border border-border/50 mb-6 flex-1">
               <div className="mb-6">
                 <span className="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium mb-3">
-                  Question {currentQuestion + 1} of {questions.length}
+                  Question {completedQuestions + 1} of {totalQuestions}
                 </span>
                 <h3 className="font-heading font-bold text-2xl text-foreground leading-tight">
                   {currentQ?.question}
                 </h3>
                 {currentQ?.type === "multi" && currentQ.maxSelect && (
                   <p className="text-sm text-muted-foreground mt-2">
-                    Select up to {currentQ.maxSelect} options
+                    Pick your top {currentQ.maxSelect}
+                  </p>
+                )}
+                {currentQ?.type === "multi" && !currentQ.maxSelect && (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Check whatever applies
                   </p>
                 )}
               </div>
@@ -266,397 +271,378 @@ type Question = {
 
 function getQuestionsForSection(sectionIndex: number): Question[] {
   switch (sectionIndex) {
-    case 0: // Relationship Intentions & Basics
+    case 0: // THE BASICS (3 questions)
       return [
         {
           id: "q1_looking_for",
           question: "What are you looking for?",
           type: "single",
           options: [
-            "Life partner",
-            "Long-term relationship",
-            "Long-term relationship, open to short",
-            "Short-term relationship, open to long",
-            "Short-term relationship",
-            "Exploring and seeing what feels right"
+            "My person - the real deal",
+            "A genuine relationship - something meaningful",
+            "Something serious, but I'm not in a rush",
+            "Keeping it casual but open to more",
+            "Just having fun for now",
+            "Honestly? Just seeing where things go"
           ]
         },
         {
-          id: "q2_graduation_match",
-          question: "I only want to be matched with:",
+          id: "q2_who_to_meet",
+          question: "I want to meet:",
           type: "single",
           options: [
-            "People in any graduation year",
-            "People within 2 years of me",
-            "People within 1 year of me",
-            "People in my year only"
+            "Anyone at Penn - age is just a number",
+            "People within 2 years of me - similar life phase vibes",
+            "People within 1 year of me - we're on the same timeline",
+            "Only people in my year - we get it"
           ]
         },
         {
-          id: "q3_timeline",
-          question: "My ideal relationship timeline looks like:",
+          id: "q3_dtr",
+          question: "When it comes to defining the relationship:",
           type: "single",
           options: [
-            "Taking things very slow - friendship first, romance later",
-            "Natural progression - let things unfold organically",
-            "Moderate pace - exclusivity within a few dates",
-            "Moving quickly - I know what I want when I feel it",
-            "No timeline - every connection is different"
-          ]
-        },
-        {
-          id: "q4_five_years",
-          question: "When I imagine my life 5 years from now, I see myself:",
-          type: "single",
-          options: [
-            "Established in my career in a major city",
-            "Pursuing graduate school or advanced training",
-            "Traveling and exploring before settling down",
-            "Building a home and possibly starting a family",
-            "Entrepreneurial ventures or creative pursuits",
-            "Following opportunities wherever they lead",
-            "Making an impact through activism or service"
+            "Slow burn - let's build a friendship first",
+            "Let it happen naturally - no pressure",
+            "Traditional route - exclusive after a few dates",
+            "When you know, you know - I don't waste time",
+            "Every connection is different"
           ]
         }
       ];
 
-    case 1: // Core Values & Beliefs
+    case 1: // LIFE VISION & PRIORITIES (3 questions)
       return [
         {
-          id: "q5_religion",
-          question: "My religious/spiritual identity is:",
+          id: "q4_five_years",
+          question: "Picture yourself in 5 years. Where are you?",
           type: "single",
           options: [
-            "Christian (practicing regularly)",
-            "Christian (culturally/occasionally)",
-            "Jewish (practicing regularly)",
-            "Jewish (culturally/occasionally)",
-            "Muslim (practicing regularly)",
-            "Muslim (culturally/occasionally)",
-            "Hindu, Buddhist, or other Eastern religion",
-            "Spiritual but not religious",
-            "Agnostic - questioning and open",
-            "Atheist - not religious",
-            "Other or prefer to describe myself differently"
+            "Killing it in my career in a major city",
+            "Deep in grad school or advanced training",
+            "Exploring the world before I settle",
+            "Actually settled - home, maybe starting a family",
+            "Building something of my own - startup, art, passion project",
+            "Wherever life takes me - I'm adaptable"
           ]
         },
         {
-          id: "q6_partner_religion",
-          question: "Regarding my partner's religious/spiritual beliefs:",
+          id: "q5_kids",
+          question: "The whole kids question:",
           type: "single",
           options: [
-            "Must share my specific religious tradition",
-            "Should share my general faith category",
-            "Must be religious/spiritual, any tradition welcome",
-            "Should be open-minded and respectful, any background okay",
-            "Prefer similar views but not a deal-breaker",
-            "Religion doesn't factor into my compatibility needs"
+            "Yes, definitely - I want a few",
+            "Probably - one or two sounds right",
+            "If my partner wants them, I'm open",
+            "Way too soon to decide",
+            "Leaning toward no",
+            "Hard no - not for me",
+            "Adoption or fostering feels more my speed"
           ]
         },
         {
-          id: "q7_causes",
-          question: "The social causes I care most about are:",
+          id: "q6_values",
+          question: "What actually matters to you?",
           type: "multi",
           maxSelect: 3,
           options: [
-            "Climate change and environmental justice",
-            "Racial justice and equality",
-            "LGBTQ+ rights",
-            "Women's rights and gender equality",
-            "Economic inequality and workers' rights",
-            "Immigration and refugee rights",
-            "Education access and reform",
-            "Healthcare access",
-            "Criminal justice reform",
-            "International human rights",
-            "Animal welfare",
-            "Religious freedom",
-            "I'm not particularly activist-oriented"
-          ]
-        },
-        {
-          id: "q8_values_engagement",
-          question: "How I engage with my values:",
-          type: "single",
-          options: [
-            "Very active - volunteering, organizing, advocacy work",
-            "Moderately active - I participate when I can",
-            "Supportive - I stay informed and donate",
-            "Personal - I live my values but don't organize",
-            "Private - these are personal matters to me"
+            "Family and the people closest to me",
+            "Crushing my career goals",
+            "Constantly growing and evolving as a person",
+            "Adventures and making memories",
+            "Financial stability and security",
+            "Actually making a difference in the world",
+            "Creative expression and authenticity",
+            "Learning and intellectual stimulation",
+            "Health and taking care of myself",
+            "My community and friendships"
           ]
         }
       ];
 
-    case 2: // Personality & Emotional Compatibility
+    case 2: // YOUR PERSONALITY (6 questions)
       return [
         {
-          id: "q9_friday_night",
-          question: "On a typical Friday night, you'll find me:",
+          id: "q7_friday_night",
+          question: "It's Friday night. Where am I?",
           type: "single",
           options: [
-            "At a party, bar, or social event with lots of people",
-            "At a dinner party or gathering with close friends",
-            "Trying something new - concert, event, restaurant",
-            "Having a movie night or game night with a few people",
-            "On a date or quality time with someone special",
-            "Reading, studying, or working on personal projects",
-            "At the gym, playing sports, or doing outdoor activities",
-            "Genuinely could be any of these - I'm spontaneous"
+            "Somewhere with a crowd - party, bar, living it up",
+            "Good food and conversation with my people",
+            "Something random - concert, new restaurant, spontaneous plan",
+            "Low-key vibes - movie or game night",
+            "Hopefully on a date",
+            "In my zone - personal project time",
+            "Getting a workout in or playing sports",
+            "Literally anywhere - I go with the flow"
           ]
         },
         {
-          id: "q10_decisions",
-          question: "When making big decisions, I:",
+          id: "q8_decisions",
+          question: "Big decision time. What's your move?",
           type: "single",
           options: [
-            "Trust my gut and intuition above all",
-            "Analyze all the data and think it through logically",
-            "Seek advice from friends and family first",
-            "Make pro/con lists and weigh options carefully",
-            "Go with what feels right in the moment",
-            "Pray, meditate, or seek spiritual guidance",
-            "Combine logic and emotion to find balance"
+            "Gut feeling all the way",
+            "Let me think this through logically",
+            "Group chat consultation required",
+            "Time for a pros and cons list",
+            "Whatever feels right right now",
+            "Head and heart - I need both"
           ]
         },
         {
-          id: "q11_difficult_time",
-          question: "When I'm going through a difficult time, I need my partner to:",
+          id: "q9_rough_day",
+          question: "You're having a really rough day. What do you need from someone you're dating?",
           type: "single",
           options: [
-            "Give me practical advice and help me problem-solve",
-            "Listen without judgment and validate my feelings",
-            "Distract me with fun activities and positivity",
-            "Give me space to process, then be there when I'm ready",
-            "Take action to help fix the situation",
-            "Match my energy and vent with me",
-            "Ask me what I need rather than assume"
+            "Tell me what to do - I need solutions",
+            "Just listen and validate what I'm feeling",
+            "Get my mind off it - let's do something fun",
+            "Give me space, but be ready when I'm ready to talk",
+            "Actually help me fix the problem",
+            "Let me be mad and be mad with me",
+            "Just ask - I'll tell you what I need"
           ]
         },
         {
-          id: "q12_humor",
-          question: "My sense of humor is best described as:",
+          id: "q10_humor",
+          question: "Your humor style is:",
           type: "single",
           options: [
-            "Witty and sarcastic - I love clever wordplay",
-            "Goofy and silly - I don't take life too seriously",
-            "Dry and deadpan - subtle jokes are my thing",
-            "Dark humor - I laugh at uncomfortable things",
-            "Playful teasing - I show affection through jokes",
-            "Wholesome and pun-based - dad jokes forever",
-            "Observational and storytelling - I find humor in everyday life",
-            "Physical comedy and goofiness"
+            "Sharp and sarcastic - I'm basically a comedy writer",
+            "Unserious and ridiculous - can't take me anywhere",
+            "Dry delivery - subtlety is an art",
+            "Dark - nothing is off limits",
+            "Roasting people I love is my love language",
+            "Aggressively wholesome - yes, I make dad jokes",
+            "I find the funny in everyday chaos",
+            "Silly and physical - I'll do anything for a laugh"
           ]
         },
         {
-          id: "q13_arguments",
-          question: "In arguments, I tend to:",
+          id: "q11_argument",
+          question: "Mid-argument with someone you care about:",
           type: "single",
           options: [
-            "Stand firm on my perspective and debate passionately",
-            "Seek compromise and find middle ground quickly",
-            "Need time to cool off before discussing rationally",
-            "Get emotional first, then work toward resolution",
-            "Avoid confrontation and try to keep the peace",
-            "Focus on understanding their perspective deeply",
-            "Use humor to diffuse tension"
+            "I'm passionate and I'm making my case",
+            "Let's figure this out together right now",
+            "I need 20 minutes to not say something I'll regret",
+            "I'm probably crying but we'll work it out",
+            "Can we not fight? This is uncomfortable",
+            "Help me see your side - I want to understand",
+            "Joke about it? Please?"
+          ]
+        },
+        {
+          id: "q12_social_battery",
+          question: "Social battery check:",
+          type: "single",
+          options: [
+            "Extreme introvert - people are exhausting",
+            "Introvert-leaning - small groups are my limit",
+            "Right in the middle - depends on the day",
+            "Extrovert-leaning - I like being around people",
+            "Extreme extrovert - alone time makes me sad"
           ]
         }
       ];
 
-    case 3: // Lifestyle & Daily Rhythms
+    case 3: // YOUR LIFE (5 questions)
       return [
         {
-          id: "q14_hobbies",
-          question: "My hobbies and interests include:",
+          id: "q13_hobbies",
+          question: "Things I actually do with my time:",
           type: "multi",
-          maxSelect: 6,
           options: [
-            "Playing sports (varsity, club, intramural)",
-            "Fitness and working out regularly",
-            "Outdoor activities (hiking, camping, nature)",
-            "Creative arts (painting, music, writing, photography)",
-            "Performing arts (theater, dance, improv)",
-            "Gaming (video games, board games, card games)",
-            "Reading and literature",
-            "Cooking and exploring food culture",
-            "Following sports as a fan",
-            "Clubbing and nightlife scene",
-            "Activism and community organizing",
-            "Greek life and social organizations",
-            "Academic research or intellectual pursuits",
-            "Fashion and personal style",
-            "Travel and exploring new places",
-            "Netflix/TV show marathons",
-            "Meditation, yoga, wellness practices"
+            "Play sports - I'm competitive",
+            "Live at the gym",
+            "Outdoor adventures - hiking, camping, nature stuff",
+            "Make things - art, music, writing, photos",
+            "Perform - theater, dance, any stage really",
+            "Game hard - video games, board games, all of it",
+            "Always reading something",
+            "Foodie life - cooking or trying restaurants",
+            "Watch sports religiously",
+            "Out at night - clubs, parties, the scene",
+            "Greek life is my whole thing",
+            "Research nerd - I love going deep on topics",
+            "Fashion matters to me",
+            "Travel whenever possible",
+            "Binge-watching is valid self-care",
+            "Wellness and mindfulness stuff"
           ]
         },
         {
-          id: "q15_new_experiences",
-          question: "How I approach new experiences:",
+          id: "q14_new_experiences",
+          question: "Someone suggests something you've never done before:",
           type: "single",
           options: [
-            "Thrillseeker - I'm always seeking adventure and adrenaline",
-            "Enthusiastically open - I love trying new things",
-            "Selectively adventurous - new experiences with familiar people",
-            "Cautiously curious - I'll try things if they seem safe/fun",
-            "Prefer the familiar - I like my routines and comfort zone",
-            "Spontaneity stresses me out - I need to plan ahead"
+            "Say less - I'm immediately in",
+            "I love new experiences - count me in",
+            "If my friends are going, I'm down",
+            "Maybe if it sounds fun and safe",
+            "I like what I like - probably not",
+            "I need advance notice and a full itinerary"
           ]
         },
         {
-          id: "q16_substances",
-          question: "My relationship with substances:",
+          id: "q15_going_out",
+          question: "Your relationship with going out:",
           type: "single",
           options: [
-            "I don't drink alcohol at all (personal/religious choice)",
-            "Rare drinker - only special occasions, 1-2 drinks max",
-            "Social drinker - I enjoy drinking at parties/bars regularly",
-            "Party culture enthusiast - drinking is part of my social life",
-            "I use marijuana occasionally",
-            "I use marijuana regularly",
-            "I'm exploring what works for me",
-            "Sober lifestyle is important to me"
+            "I don't drink - personal choice",
+            "Barely ever - special occasions only",
+            "Yeah I go out - it's part of college",
+            "Going out is definitely part of my social life",
+            "I also smoke occasionally",
+            "I smoke pretty regularly",
+            "Still figuring out my vibe"
           ]
         },
         {
-          id: "q17_ambition",
-          question: "The role of ambition and achievement in my life:",
+          id: "q16_mess",
+          question: "The mess tolerance question:",
           type: "single",
           options: [
-            "Extremely driven - grades, career, success are top priorities",
-            "Very ambitious - I work hard but maintain balance",
-            "Balanced approach - success matters but so does enjoyment",
-            "Go with the flow - I'm more about experiences than achievement",
-            "Low-key about achievement - I'm here for learning and growth",
-            "Still figuring out what drives me"
+            "Everything has a place and it better be there",
+            "I'm pretty clean - it matters to me",
+            "Organized enough - I know where things are",
+            "I clean when it gets bad",
+            "Mess doesn't bother me at all"
+          ]
+        },
+        {
+          id: "q17_morning_night",
+          question: "Morning person or night owl?",
+          type: "single",
+          options: [
+            "Up early crushing it",
+            "Morning-ish but flexible",
+            "Whatever works - I adapt",
+            "Better at night but I can do mornings",
+            "100% night owl - don't talk to me before 10am"
           ]
         }
       ];
 
-    case 4: // Intimacy & Partnership Style
+    case 4: // HOW YOU LOVE (5 questions)
       return [
         {
-          id: "q18_love_language",
-          question: "The way I express love and affection is primarily through:",
+          id: "q18_show_interest",
+          question: "The way you show someone you're into them:",
           type: "single",
           options: [
-            "Physical touch - cuddling, holding hands, physical closeness",
-            "Quality time - deep conversations and undivided attention",
-            "Words of affirmation - expressing feelings verbally and often",
-            "Acts of service - doing thoughtful things to help",
-            "Thoughtful gestures - remembering details and giving gifts",
-            "Shared experiences - making memories together",
-            "Support - being there for goals and challenges"
+            "Touch - I'm naturally physically affectionate",
+            "Time - giving you my full attention",
+            "Words - I'll tell you how I feel",
+            "Actions - doing things to make your life easier",
+            "Small thoughtful things that show I remember",
+            "Experiences - making memories together",
+            "Hyping you up and supporting your dreams"
           ]
         },
         {
-          id: "q19_balance",
-          question: "In a relationship, my ideal balance is:",
+          id: "q19_dynamic",
+          question: "Your ideal relationship dynamic:",
           type: "single",
           options: [
-            "Very interdependent - we do most things together",
-            "Mostly together - shared life with some separate interests",
-            "Balanced - equal time together and pursuing own things",
-            "Mostly independent - separate lives that intersect meaningfully",
-            "Very independent - strong autonomy with quality moments",
-            "Varies by phase - sometimes closer, sometimes more space"
+            "Pretty much joined at the hip",
+            "Mostly together, some independence",
+            "50/50 - balance is key",
+            "Mostly separate lives that overlap nicely",
+            "Very independent with intentional quality time",
+            "Depends on the phase we're in"
           ]
         },
         {
-          id: "q20_emotional_intimacy",
-          question: "When it comes to emotional intimacy, I:",
+          id: "q20_emotional",
+          question: "Opening up emotionally:",
           type: "single",
           options: [
-            "Open up quickly and deeply - vulnerability comes naturally",
-            "Take time to trust, but then share everything",
-            "Share gradually as trust builds over time",
-            "Keep some emotional walls up even in relationships",
-            "Struggle with vulnerability but want to work on it",
-            "Prefer to keep deep emotions private"
+            "I'm an open book from day one",
+            "Slow to trust, but then all in",
+            "Gradual - I share as I get comfortable",
+            "I keep some walls up",
+            "I want to open up but it's hard for me",
+            "Pretty private with feelings"
           ]
         },
         {
           id: "q21_privacy",
-          question: "My boundaries around privacy and sharing:",
+          question: "The privacy talk:",
           type: "single",
           options: [
-            "Completely open book - shared passwords, locations, full transparency",
-            "Mostly transparent - trust but verify when needed",
-            "Balanced - open communication but respect for privacy",
-            "Autonomous - separate lives with updates on important things",
-            "Very private - need significant personal space and boundaries"
+            "Full transparency - passwords and all",
+            "Pretty open but we're still individuals",
+            "Open communication, personal boundaries respected",
+            "Tell me the important stuff, live your life",
+            "I need a lot of personal space"
+          ]
+        },
+        {
+          id: "q22_physical",
+          question: "Physical affection in a relationship:",
+          type: "single",
+          options: [
+            "Constant - I'm very touchy",
+            "Regular - it's important to me",
+            "Moderate - balanced with everything else",
+            "Occasional - I like it but don't need it all the time",
+            "Not my main thing - other stuff matters more"
           ]
         }
       ];
 
-    case 5: // Communication & Social Dynamics
+    case 5: // STAYING CONNECTED (2 questions)
       return [
         {
-          id: "q22_communication",
-          question: "My communication style in relationships:",
+          id: "q23_texting",
+          question: "Your texting personality:",
           type: "single",
           options: [
-            "Constant communication - texting throughout the day",
-            "Frequent check-ins - morning and evening texts plus calls",
-            "Regular updates - daily conversation when we have things to share",
-            "Periodic connection - we talk when it matters",
-            "Low-key texter - prefer in-person quality time",
-            "Independent - we each do our thing and connect intentionally"
+            "Constant stream of consciousness all day",
+            "Frequent - good morning/goodnight type",
+            "Daily convos when there's something to say",
+            "When something actually matters",
+            "Honestly not a big texter - rather see you",
+            "Pretty independent - we'll link when we link"
           ]
         },
         {
-          id: "q23_friendships",
-          question: "How I handle my partner's friendships and social life:",
+          id: "q24_friend_groups",
+          question: "Friend groups and relationships:",
           type: "single",
           options: [
-            "We should have mostly shared friends and social life",
-            "I want to be friends with their friends and vice versa",
-            "Separate friend groups that occasionally mix",
-            "Completely separate social lives are fine",
-            "I need my partner to be close with my core friends",
-            "I prefer we each maintain our own separate friendships"
+            "All my friends are your friends and vice versa",
+            "I want everyone to get along and hang out",
+            "Separate squads that sometimes overlap",
+            "Totally separate is fine",
+            "You need to vibe with my core group though",
+            "We should each keep our own friendships"
           ]
         }
       ];
 
-    case 6: // Future & Deal-Breakers
+    case 6: // THE NON-NEGOTIABLES (1 question)
       return [
-        {
-          id: "q24_children",
-          question: "My thoughts on having children:",
-          type: "single",
-          options: [
-            "Definitely want children (2+ kids)",
-            "Probably want children someday (1-2 kids)",
-            "Open to it if my partner wants them",
-            "Genuinely undecided - way too early to know",
-            "Probably don't want children",
-            "Definitely don't want children",
-            "Want to adopt or foster rather than biological"
-          ]
-        },
         {
           id: "q25_dealbreakers",
-          question: "These are absolute deal-breakers for me:",
+          question: "Absolute deal-breakers:",
           type: "multi",
-          maxSelect: 5,
           options: [
-            "Misaligned religious beliefs or level of religiosity",
-            "Opposite political views or civic values",
-            "Different stance on having children",
-            "Incompatible substance use (too much or too little)",
-            "Lack of career ambition or drive",
-            "Too much career focus without work-life balance",
-            "Unwilling to communicate during conflict",
-            "Disrespectful to my friends or family",
-            "Extreme introversion or extraversion mismatch",
-            "Different financial values (spending vs. saving)",
-            "Not willing to explore Philadelphia and try new things",
-            "Unable to express emotions or be vulnerable",
-            "Different views on monogamy or relationship exclusivity",
-            "Doesn't share any of my core hobbies or interests",
-            "None of these - I'm open-minded and adaptable"
+            "Different views on having kids",
+            "Very different relationship with substances",
+            "No ambition or drive",
+            "All work, no balance",
+            "Shuts down instead of communicating",
+            "Rude to my friends or family",
+            "Extreme introvert/extrovert clash",
+            "Completely different money values",
+            "Won't explore Philly with me",
+            "Can't be emotionally open",
+            "Different views on exclusivity/monogamy",
+            "Zero shared interests",
+            "None - I'm pretty open-minded"
           ]
         }
       ];
