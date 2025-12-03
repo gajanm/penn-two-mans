@@ -7,11 +7,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { ArrowRight, ArrowLeft, Heart, Sparkles, Users, Calendar, MessageCircle, Zap, Check, User, ChevronsUpDown } from "lucide-react";
+import { ArrowRight, ArrowLeft, Heart, Sparkles, Users, Calendar, MessageCircle, Zap, Check, User, Search } from "lucide-react";
 import { useLocation } from "wouter";
-import { cn } from "@/lib/utils";
 
 const sections = [
   { id: "about", title: "About You", description: "Let's get to know you", icon: User, color: "from-violet-500 to-purple-500" },
@@ -102,6 +99,84 @@ function ScrollableOptions({ children }: { children: React.ReactNode }) {
   );
 }
 
+function SearchableMajorSelect({ 
+  value, 
+  onChange 
+}: { 
+  value: string; 
+  onChange: (value: string) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const filteredMajors = majors.filter(major => 
+    major.toLowerCase().includes(search.toLowerCase())
+  );
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <div 
+        className="relative"
+        onClick={() => {
+          setIsOpen(true);
+          setTimeout(() => inputRef.current?.focus(), 0);
+        }}
+      >
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          ref={inputRef}
+          placeholder="Search major..."
+          value={isOpen ? search : value || ""}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setIsOpen(true);
+          }}
+          onFocus={() => setIsOpen(true)}
+          className="h-12 rounded-xl border-2 pl-10"
+        />
+      </div>
+      
+      {isOpen && (
+        <div className="absolute z-50 w-full mt-1 bg-white border-2 rounded-xl shadow-lg max-h-[200px] overflow-y-auto">
+          {filteredMajors.length === 0 ? (
+            <div className="p-3 text-sm text-muted-foreground text-center">No major found</div>
+          ) : (
+            filteredMajors.map((major) => (
+              <div
+                key={major}
+                className={`p-3 cursor-pointer hover:bg-primary/10 flex items-center gap-2 ${
+                  value === major ? 'bg-primary/5 text-primary' : ''
+                }`}
+                onClick={() => {
+                  onChange(major);
+                  setSearch("");
+                  setIsOpen(false);
+                }}
+              >
+                {value === major && <Check className="w-4 h-4" />}
+                <span className="text-sm">{major}</span>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Survey() {
   const [currentSection, setCurrentSection] = useState(0);
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -134,7 +209,7 @@ export default function Survey() {
     }
     
     if (currentQ.type === "multi") {
-      return Array.isArray(currentAnswer) && currentAnswer.length > 0 && currentAnswer.length <= (currentQ.maxSelect || 999);
+      return Array.isArray(currentAnswer) && currentAnswer.length > 0 && currentAnswer.length <= (currentQ.maxSelect || 5);
     }
     
     return !!currentAnswer;
@@ -143,7 +218,7 @@ export default function Survey() {
   const handleAnswer = (value: string) => {
     if (currentQ.type === "multi") {
       const current = (answers[currentQ.id] as string[]) || [];
-      const maxSelect = currentQ.maxSelect || 999;
+      const maxSelect = currentQ.maxSelect || 5;
       if (current.includes(value)) {
         setAnswers({ ...answers, [currentQ.id]: current.filter(v => v !== value) });
       } else if (current.length < maxSelect) {
@@ -256,14 +331,9 @@ export default function Survey() {
                     <h3 className="font-heading font-bold text-2xl text-foreground leading-tight">
                       {currentQ?.question}
                     </h3>
-                    {currentQ?.type === "multi" && currentQ.maxSelect && (
+                    {currentQ?.type === "multi" && (
                       <p className="text-sm text-muted-foreground mt-2">
-                        Pick your top {currentQ.maxSelect}
-                      </p>
-                    )}
-                    {currentQ?.type === "multi" && !currentQ.maxSelect && (
-                      <p className="text-sm text-muted-foreground mt-2">
-                        Check whatever applies
+                        Select up to {currentQ.maxSelect || 5} options
                       </p>
                     )}
                   </div>
@@ -316,6 +386,8 @@ export default function Survey() {
                         {currentQ?.options.map((option, idx) => {
                           const selectedOptions = (currentAnswer as string[]) || [];
                           const isSelected = selectedOptions.includes(option);
+                          const maxSelect = currentQ.maxSelect || 5;
+                          const canSelect = isSelected || selectedOptions.length < maxSelect;
                           return (
                             <motion.div
                               key={option}
@@ -324,18 +396,21 @@ export default function Survey() {
                               transition={{ delay: idx * 0.03 }}
                             >
                               <label 
-                                className={`flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200 hover:border-primary/50 hover:bg-primary/5 ${
+                                className={`flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200 ${
                                   isSelected 
                                     ? 'border-primary bg-primary/10 shadow-md' 
-                                    : 'border-border/50 bg-white'
+                                    : canSelect
+                                      ? 'border-border/50 bg-white hover:border-primary/50 hover:bg-primary/5'
+                                      : 'border-border/30 bg-gray-50 opacity-50 cursor-not-allowed'
                                 }`}
                               >
                                 <Checkbox 
                                   checked={isSelected}
-                                  onCheckedChange={() => handleAnswer(option)}
+                                  onCheckedChange={() => canSelect && handleAnswer(option)}
+                                  disabled={!canSelect}
                                   className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                                 />
-                                <span className={`flex-1 text-sm font-medium ${isSelected ? 'text-primary' : 'text-foreground'}`}>
+                                <span className={`flex-1 text-sm font-medium ${isSelected ? 'text-primary' : ''}`}>
                                   {option}
                                 </span>
                               </label>
@@ -393,7 +468,6 @@ function ProfileSection({
   handleInterestedIn: (value: string) => void;
 }) {
   const interestedIn = (answers.interestedIn as string[]) || [];
-  const [majorOpen, setMajorOpen] = useState(false);
   
   return (
     <div className="relative">
@@ -484,49 +558,10 @@ function ProfileSection({
 
           <div className="space-y-2">
             <Label className="text-sm font-semibold">Major</Label>
-            <Popover open={majorOpen} onOpenChange={setMajorOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={majorOpen}
-                  className="w-full h-12 rounded-xl border-2 justify-between font-normal"
-                >
-                  <span className={cn("truncate", !answers.major && "text-muted-foreground")}>
-                    {answers.major ? (answers.major as string) : "Search major..."}
-                  </span>
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[300px] p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="Search major..." />
-                  <CommandList>
-                    <CommandEmpty>No major found.</CommandEmpty>
-                    <CommandGroup className="max-h-[300px] overflow-y-auto">
-                      {majors.map((major) => (
-                        <CommandItem
-                          key={major}
-                          value={major}
-                          onSelect={() => {
-                            setAnswers({ ...answers, major: major });
-                            setMajorOpen(false);
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              answers.major === major ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          {major}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
+            <SearchableMajorSelect
+              value={(answers.major as string) || ""}
+              onChange={(value) => setAnswers({ ...answers, major: value })}
+            />
           </div>
         </div>
 
@@ -774,12 +809,13 @@ function getQuestionsForSection(sectionIndex: number): Question[] {
         }
       ];
 
-    case 4: // YOUR LIFE (7 questions - updated with split going out questions)
+    case 4: // YOUR LIFE (9 questions - with drinking and weed partner preferences)
       return [
         {
           id: "q13_hobbies",
           question: "Things I actually do with my time:",
           type: "multi",
+          maxSelect: 5,
           options: [
             "Play sports - I'm competitive",
             "Live at the gym",
@@ -839,7 +875,20 @@ function getQuestionsForSection(sectionIndex: number): Question[] {
           ]
         },
         {
-          id: "q17_weed",
+          id: "q17_partner_alcohol",
+          question: "How do you feel about a partner who drinks?",
+          type: "single",
+          options: [
+            "They shouldn't drink at all - dealbreaker for me",
+            "Rarely is fine - special occasions only",
+            "Occasionally is okay - not too often",
+            "Socially is totally fine - most weekends",
+            "However much they want - doesn't bother me",
+            "As long as it's responsible, I don't care"
+          ]
+        },
+        {
+          id: "q18_weed",
           question: "Your relationship with weed:",
           type: "single",
           options: [
@@ -853,7 +902,20 @@ function getQuestionsForSection(sectionIndex: number): Question[] {
           ]
         },
         {
-          id: "q18_mess",
+          id: "q19_partner_weed",
+          question: "How do you feel about a partner who smokes weed?",
+          type: "single",
+          options: [
+            "They shouldn't smoke at all - dealbreaker",
+            "Very occasionally is okay - rarely",
+            "Socially is fine - when out with friends",
+            "Regularly is fine - doesn't bother me",
+            "However much they want - their choice",
+            "Prefer they don't but not a dealbreaker"
+          ]
+        },
+        {
+          id: "q20_mess",
           question: "The mess tolerance question:",
           type: "single",
           options: [
@@ -865,7 +927,7 @@ function getQuestionsForSection(sectionIndex: number): Question[] {
           ]
         },
         {
-          id: "q19_morning_night",
+          id: "q21_morning_night",
           question: "Morning person or night owl?",
           type: "single",
           options: [
@@ -881,7 +943,7 @@ function getQuestionsForSection(sectionIndex: number): Question[] {
     case 5: // HOW YOU LOVE (5 questions)
       return [
         {
-          id: "q20_show_interest",
+          id: "q22_show_interest",
           question: "The way you show someone you're into them:",
           type: "single",
           options: [
@@ -895,7 +957,7 @@ function getQuestionsForSection(sectionIndex: number): Question[] {
           ]
         },
         {
-          id: "q21_dynamic",
+          id: "q23_dynamic",
           question: "Your ideal relationship dynamic:",
           type: "single",
           options: [
@@ -908,7 +970,7 @@ function getQuestionsForSection(sectionIndex: number): Question[] {
           ]
         },
         {
-          id: "q22_emotional",
+          id: "q24_emotional",
           question: "Opening up emotionally:",
           type: "single",
           options: [
@@ -921,7 +983,7 @@ function getQuestionsForSection(sectionIndex: number): Question[] {
           ]
         },
         {
-          id: "q23_privacy",
+          id: "q25_privacy",
           question: "The privacy talk:",
           type: "single",
           options: [
@@ -933,7 +995,7 @@ function getQuestionsForSection(sectionIndex: number): Question[] {
           ]
         },
         {
-          id: "q24_physical",
+          id: "q26_physical",
           question: "Physical affection in a relationship:",
           type: "single",
           options: [
@@ -949,7 +1011,7 @@ function getQuestionsForSection(sectionIndex: number): Question[] {
     case 6: // STAYING CONNECTED (2 questions)
       return [
         {
-          id: "q25_texting",
+          id: "q27_texting",
           question: "Your texting personality:",
           type: "single",
           options: [
@@ -962,7 +1024,7 @@ function getQuestionsForSection(sectionIndex: number): Question[] {
           ]
         },
         {
-          id: "q26_friend_groups",
+          id: "q28_friend_groups",
           question: "Friend groups and relationships:",
           type: "single",
           options: [
@@ -979,9 +1041,10 @@ function getQuestionsForSection(sectionIndex: number): Question[] {
     case 7: // THE NON-NEGOTIABLES (1 question)
       return [
         {
-          id: "q27_dealbreakers",
+          id: "q29_dealbreakers",
           question: "Absolute deal-breakers:",
           type: "multi",
+          maxSelect: 5,
           options: [
             "Different views on having kids",
             "Very different relationship with substances",
