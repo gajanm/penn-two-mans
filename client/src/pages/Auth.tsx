@@ -23,7 +23,7 @@ const emailSchema = z.object({
 });
 
 const codeSchema = z.object({
-  code: z.string().length(6, "Code must be 6 digits").regex(/^\d+$/, "Code must be numbers only"),
+  code: z.string().length(8, "Code must be 8 digits").regex(/^\d+$/, "Code must be numbers only"),
 });
 
 type Step = "email" | "code";
@@ -283,19 +283,19 @@ export default function Auth() {
                         <FormControl>
                           <Input 
                             data-testid="input-code"
-                            placeholder="Enter 6-digit code" 
-                            maxLength={6}
+                            placeholder="Enter 8-digit code" 
+                            maxLength={8}
                             inputMode="numeric"
                             autoComplete="one-time-code"
                             {...field} 
                             onChange={(e) => {
-                              const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+                              const value = e.target.value.replace(/\D/g, '').slice(0, 8);
                               field.onChange(value);
                             }}
                             onPaste={(e) => {
                               e.preventDefault();
                               const pastedText = e.clipboardData.getData('text');
-                              const digits = pastedText.replace(/\D/g, '').slice(0, 6);
+                              const digits = pastedText.replace(/\D/g, '').slice(0, 8);
                               field.onChange(digits);
                             }}
                             className="h-14 text-center text-2xl tracking-widest font-mono rounded-xl bg-white/50 border-border focus:border-primary focus:ring-primary/20 transition-all" 
