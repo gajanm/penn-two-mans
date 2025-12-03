@@ -177,17 +177,32 @@ export default function Settings() {
       if (!user) return;
       
       try {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+        
+        if (!token) {
+          setIsLoading(false);
+          return;
+        }
 
-        const { data: survey } = await supabase
-          .from('survey_responses')
-          .select('answers')
-          .eq('user_id', user.id)
-          .single();
+        const [profileRes, surveyRes] = await Promise.all([
+          fetch('/api/profile', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }),
+          fetch('/api/survey', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          })
+        ]);
+
+        let profile = null;
+        let survey = null;
+
+        if (profileRes.ok) {
+          profile = await profileRes.json();
+        }
+        if (surveyRes.ok) {
+          survey = await surveyRes.json();
+        }
 
         const loadedAnswers: SurveyData = {
           height: profile?.height || 66,
@@ -240,6 +255,13 @@ export default function Settings() {
     
     setIsSaving(true);
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
+
       const profileData = {
         full_name: answers.fullName as string,
         gender: answers.gender as string,
@@ -249,15 +271,7 @@ export default function Settings() {
         height: answers.height as number,
         partner_height_min: answers.partnerHeightMin as number,
         partner_height_max: answers.partnerHeightMax as number,
-        survey_completed: true,
       };
-
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update(profileData)
-        .eq('id', user.id);
-
-      if (profileError) throw profileError;
 
       const surveyAnswers = { ...answers };
       delete surveyAnswers.fullName;
@@ -269,23 +283,21 @@ export default function Settings() {
       delete surveyAnswers.partnerHeightMin;
       delete surveyAnswers.partnerHeightMax;
 
-      const { data: existingSurvey } = await supabase
-        .from('survey_responses')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
+      const response = await fetch('/api/survey', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          answers: surveyAnswers,
+          profileData,
+        }),
+      });
 
-      if (existingSurvey) {
-        const { error: updateError } = await supabase
-          .from('survey_responses')
-          .update({ answers: surveyAnswers, updated_at: new Date().toISOString() })
-          .eq('user_id', user.id);
-        if (updateError) throw updateError;
-      } else {
-        const { error: insertError } = await supabase
-          .from('survey_responses')
-          .insert({ user_id: user.id, answers: surveyAnswers });
-        if (insertError) throw insertError;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to save');
       }
 
       toast({

@@ -25,6 +25,7 @@ const profileUpdateSchema = z.object({
   partner_height_min: z.number().optional(),
   partner_height_max: z.number().optional(),
   survey_completed: z.boolean().optional(),
+  partner_id: z.string().uuid().optional(),
 });
 
 async function authenticateToken(req: Request, res: Response, next: NextFunction) {
@@ -154,7 +155,7 @@ export async function registerRoutes(
     try {
       const user = (req as any).user;
       
-      const { data: profile, error } = await supabase
+      const { data: profile, error } = await supabaseAdmin
         .from('profiles')
         .select('*')
         .eq('id', user.id)
@@ -181,7 +182,7 @@ export async function registerRoutes(
         });
       }
 
-      const { data: profile, error } = await supabase
+      const { data: profile, error } = await supabaseAdmin
         .from('profiles')
         .update(result.data)
         .eq('id', user.id)
@@ -194,6 +195,28 @@ export async function registerRoutes(
 
       res.json(profile);
     } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  app.get("/api/partners", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      
+      const { data: partners, error } = await supabaseAdmin
+        .from('profiles')
+        .select('id, email, full_name, major, graduation_year, gender')
+        .eq('survey_completed', true)
+        .neq('id', user.id);
+
+      if (error) {
+        console.error("Partners fetch error:", error);
+        return res.status(400).json({ message: error.message });
+      }
+
+      res.json(partners || []);
+    } catch (error) {
+      console.error("Partners error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -218,42 +241,46 @@ export async function registerRoutes(
         });
       }
 
-      const { error: profileError } = await supabase
+      const { error: profileError } = await supabaseAdmin
         .from('profiles')
         .update(profileResult.data)
         .eq('id', user.id);
 
       if (profileError) {
+        console.error("Profile update error:", profileError);
         return res.status(400).json({ message: profileError.message });
       }
 
-      const { data: existingSurvey } = await supabase
+      const { data: existingSurvey } = await supabaseAdmin
         .from('survey_responses')
         .select('id')
         .eq('user_id', user.id)
         .single();
 
       if (existingSurvey) {
-        const { error: updateError } = await supabase
+        const { error: updateError } = await supabaseAdmin
           .from('survey_responses')
           .update({ answers, updated_at: new Date().toISOString() })
           .eq('user_id', user.id);
 
         if (updateError) {
+          console.error("Survey update error:", updateError);
           return res.status(400).json({ message: updateError.message });
         }
       } else {
-        const { error: insertError } = await supabase
+        const { error: insertError } = await supabaseAdmin
           .from('survey_responses')
           .insert({ user_id: user.id, answers });
 
         if (insertError) {
+          console.error("Survey insert error:", insertError);
           return res.status(400).json({ message: insertError.message });
         }
       }
 
       res.json({ message: "Survey saved successfully" });
     } catch (error) {
+      console.error("Survey save error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -262,17 +289,17 @@ export async function registerRoutes(
     try {
       const user = (req as any).user;
 
-      const { data: survey, error } = await supabase
+      const { data: survey, error } = await supabaseAdmin
         .from('survey_responses')
         .select('*')
         .eq('user_id', user.id)
         .single();
 
-      if (error) {
-        return res.status(404).json({ message: "Survey not found" });
+      if (error && error.code !== 'PGRST116') {
+        return res.status(400).json({ message: error.message });
       }
 
-      res.json(survey);
+      res.json(survey || { answers: {} });
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }

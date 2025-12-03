@@ -32,23 +32,33 @@ export default function PartnerSelect() {
       if (!user) return;
       
       try {
-        const { data: usersData, error: usersError } = await supabase
-          .from('profiles')
-          .select('id, email, full_name, major, graduation_year, gender')
-          .eq('survey_completed', true)
-          .neq('id', user.id);
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+        
+        if (!token) {
+          setLoading(false);
+          return;
+        }
 
-        if (usersError) throw usersError;
-        setUsers(usersData || []);
+        const [partnersRes, profileRes] = await Promise.all([
+          fetch('/api/partners', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }),
+          fetch('/api/profile', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          })
+        ]);
+
+        if (partnersRes.ok) {
+          const partnersData = await partnersRes.json();
+          setUsers(partnersData || []);
+        }
         
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('partner_id')
-          .eq('id', user.id)
-          .single();
-        
-        if (profileData?.partner_id) {
-          setSelectedPartnerId(profileData.partner_id);
+        if (profileRes.ok) {
+          const profileData = await profileRes.json();
+          if (profileData?.partner_id) {
+            setSelectedPartnerId(profileData.partner_id);
+          }
         }
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -72,13 +82,22 @@ export default function PartnerSelect() {
     setSelectedPartnerId(id);
     
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ partner_id: id })
-        .eq('id', user.id);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      
+      if (token) {
+        const response = await fetch('/api/profile', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ partner_id: id }),
+        });
 
-      if (error) {
-        console.warn('Partner persistence not available:', error.message);
+        if (!response.ok) {
+          console.warn('Partner persistence failed');
+        }
       }
 
       toast({
