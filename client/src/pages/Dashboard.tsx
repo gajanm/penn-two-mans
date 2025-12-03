@@ -4,17 +4,20 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Calendar, ArrowRight, CheckCircle2, Clock, MapPin } from "lucide-react";
-import { currentUser, friends } from "@/lib/mockData";
+import { currentUser, friends, getInitials, getAvatarColor } from "@/lib/mockData";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Dashboard() {
   const partner = friends.find(f => f.id === currentUser.partnerId);
+  const { user } = useAuth();
+  const userName = user?.email?.split('@')[0] || currentUser.name;
 
   return (
     <div className="space-y-8">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="font-heading font-bold text-3xl text-foreground">Welcome back, {currentUser.name}!</h1>
+          <h1 className="font-heading font-bold text-3xl text-foreground">Welcome back, {userName}!</h1>
           <p className="text-muted-foreground">Here's what's happening with your double date journey this week.</p>
         </div>
         <Link href="/partner">
@@ -39,11 +42,11 @@ export default function Dashboard() {
               {/* Partner Info */}
               <div className="flex items-center gap-4 flex-1">
                 <div className="relative">
-                  <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-white shadow-md">
-                    <img src={currentUser.avatar} alt="You" className="w-full h-full object-cover" />
+                  <div className={`w-20 h-20 rounded-full border-4 border-white shadow-md flex items-center justify-center text-white font-bold text-xl ${getAvatarColor(userName)}`}>
+                    {getInitials(userName)}
                   </div>
-                  <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-white shadow-md -ml-8 absolute top-0 left-12">
-                    <img src={partner?.avatar} alt="Partner" className="w-full h-full object-cover" />
+                  <div className={`w-20 h-20 rounded-full border-4 border-white shadow-md -ml-8 absolute top-0 left-12 flex items-center justify-center text-white font-bold text-xl ${getAvatarColor(partner?.name || 'Partner')}`}>
+                    {getInitials(partner?.name || 'Partner')}
                   </div>
                 </div>
                 <div className="ml-14">
@@ -101,7 +104,7 @@ export default function Dashboard() {
           title="Browse Date Ideas"
           description="Find the perfect spot for your next double date."
           icon={<MapPin className="w-6 h-6 text-white" />}
-          color="bg-tertiary" // Using terracotta/orange-ish
+          color="bg-tertiary"
           href="/dates"
           delay={0.1}
         />
@@ -109,7 +112,7 @@ export default function Dashboard() {
           title="Group Chat"
           description="Plan the details with your match."
           icon={<Users className="w-6 h-6 text-white" />}
-          color="bg-secondary" // Sage green
+          color="bg-secondary"
           href="/chat"
           delay={0.2}
         />
@@ -117,7 +120,7 @@ export default function Dashboard() {
           title="Update Profile"
           description="Keep your preferences fresh for better matches."
           icon={<Calendar className="w-6 h-6 text-white" />}
-          color="bg-primary" // Coral
+          color="bg-primary"
           href="/settings"
           delay={0.3}
         />

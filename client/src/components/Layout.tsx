@@ -1,11 +1,22 @@
 import React from "react";
 import { Link, useLocation } from "wouter";
-import { Home, Users, Heart, MessageCircle, MapPin, User } from "lucide-react";
+import { Home, Users, Heart, MessageCircle, MapPin, User, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { getInitials, getAvatarColor } from "@/lib/mockData";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
+  const { user, signOut } = useAuth();
+  const { toast } = useToast();
 
   const navItems = [
     { icon: Home, label: "Home", path: "/dashboard" },
@@ -15,6 +26,27 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { icon: MapPin, label: "Dates", path: "/dates" },
     { icon: User, label: "Profile", path: "/settings" },
   ];
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Logged out",
+        description: "You've been logged out successfully.",
+      });
+      setLocation("/");
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to log out. Please try again.",
+      });
+    }
+  };
+
+  const userName = user?.email?.split('@')[0] || 'User';
+  const initials = getInitials(userName);
+  const avatarColor = getAvatarColor(userName);
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans pb-20 md:pb-0 flex flex-col">
@@ -37,9 +69,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </Link>
           ))}
         </nav>
-        <div className="w-8 h-8 rounded-full bg-primary/20 overflow-hidden">
-          <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80" alt="Profile" className="w-full h-full object-cover" />
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className={`w-9 h-9 rounded-full ${avatarColor} flex items-center justify-center text-white font-medium text-sm cursor-pointer hover:opacity-90 transition-opacity`}>
+              {initials}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600 focus:text-red-600">
+              <LogOut className="mr-2 h-4 w-4" />
+              Log out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </header>
 
       <main className="flex-1 overflow-x-hidden">
@@ -56,7 +98,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Mobile Bottom Nav */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-border flex justify-around py-3 px-2 z-50 pb-safe">
-        {navItems.map((item) => (
+        {navItems.slice(0, 5).map((item) => (
           <Link key={item.path} href={item.path}>
             <a className={cn(
               "flex flex-col items-center justify-center gap-1 p-2 rounded-lg transition-colors w-full",
@@ -67,6 +109,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </a>
           </Link>
         ))}
+        <button 
+          onClick={handleLogout}
+          className="flex flex-col items-center justify-center gap-1 p-2 rounded-lg transition-colors w-full text-muted-foreground hover:text-red-500"
+        >
+          <LogOut className="w-6 h-6" />
+          <span className="text-[10px] font-medium">Logout</span>
+        </button>
       </nav>
     </div>
   );

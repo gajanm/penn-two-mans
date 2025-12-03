@@ -178,6 +178,14 @@ This forces all signups through the server endpoint which validates Penn emails.
 
 ## Recent Changes
 
+### December 3, 2025 - UI/UX Improvements
+- Removed all profile pictures: Replaced with initials-based avatars using colored circles
+- Added logout functionality: Integrated with AuthContext in Layout header dropdown and mobile nav
+- Rebuilt Settings page: Full vertical survey layout on single scrollable page for easy preference editing
+- Updated Partner selection: Now fetches real users from Supabase profiles table (survey_completed = true)
+- Partner persistence: Saves selected partner to profiles.partner_id (requires column in Supabase)
+- Helper functions: getInitials() and getAvatarColor() in mockData.ts for consistent avatar styling
+
 ### December 3, 2025 - Supabase Migration
 - Migrated from Replit PostgreSQL + Passport.js to Supabase
 - Implemented Supabase Auth with server-side Penn email validation
@@ -185,3 +193,9 @@ This forces all signups through the server endpoint which validates Penn emails.
 - Created ProtectedRoute component for route protection
 - Added service role key support for secure user creation
 - Updated all API endpoints with token authentication and Zod validation
+
+### Database Schema Updates Needed
+To enable partner persistence, add the following column to the profiles table in Supabase:
+```sql
+ALTER TABLE profiles ADD COLUMN partner_id UUID REFERENCES profiles(id);
+```

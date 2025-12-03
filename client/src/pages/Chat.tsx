@@ -1,10 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, Calendar, Smile, X } from "lucide-react";
-import { chatMessages, currentMatch, currentUser, friends } from "@/lib/mockData";
+import { chatMessages, currentMatch, currentUser, friends, getInitials, getAvatarColor } from "@/lib/mockData";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -38,14 +37,12 @@ export default function Chat() {
   const getSenderName = (id: string) => {
     if (id === currentUser.id) return "You";
     if (id === currentUser.partnerId) return friends.find(f => f.id === id)?.name;
-    return currentMatch.names.find((_, idx) => `m1-${idx}` === id) || "Match"; // Simplified logic
+    return currentMatch.names.find((_, idx) => `m1-${idx}` === id) || "Match";
   };
 
-  const getSenderAvatar = (id: string) => {
-    if (id === currentUser.id) return currentUser.avatar;
-    if (id === currentUser.partnerId) return friends.find(f => f.id === id)?.avatar;
-    // Mock logic for match avatars
-    return currentMatch.avatars[0];
+  const getSenderInitials = (id: string) => {
+    const name = getSenderName(id) || 'U';
+    return getInitials(name);
   };
 
   return (
@@ -56,16 +53,16 @@ export default function Chat() {
         <div className="p-4 border-b border-border flex items-center justify-between bg-white/80 backdrop-blur-sm z-10">
           <div className="flex items-center gap-4">
             <div className="flex -space-x-3">
-              <Avatar className="border-2 border-white w-10 h-10">
-                <AvatarImage src={currentUser.avatar} />
-              </Avatar>
-              <Avatar className="border-2 border-white w-10 h-10">
-                <AvatarImage src={friends.find(f => f.id === currentUser.partnerId)?.avatar} />
-              </Avatar>
-              {currentMatch.avatars.map((avi, i) => (
-                <Avatar key={i} className="border-2 border-white w-10 h-10">
-                  <AvatarImage src={avi} />
-                </Avatar>
+              <div className={`w-10 h-10 rounded-full border-2 border-white flex items-center justify-center text-white font-medium text-sm ${getAvatarColor(currentUser.name)}`}>
+                {getInitials(currentUser.name)}
+              </div>
+              <div className={`w-10 h-10 rounded-full border-2 border-white flex items-center justify-center text-white font-medium text-sm ${getAvatarColor(friends.find(f => f.id === currentUser.partnerId)?.name || 'Partner')}`}>
+                {getInitials(friends.find(f => f.id === currentUser.partnerId)?.name || 'Partner')}
+              </div>
+              {currentMatch.names.map((name, i) => (
+                <div key={i} className={`w-10 h-10 rounded-full border-2 border-white flex items-center justify-center text-white font-medium text-sm ${getAvatarColor(name)}`}>
+                  {getInitials(name)}
+                </div>
               ))}
             </div>
             <div>
@@ -112,6 +109,7 @@ export default function Chat() {
 
           {messages.map((msg) => {
             const isMe = msg.senderId === currentUser.id;
+            const senderName = getSenderName(msg.senderId) || 'User';
             return (
               <motion.div 
                 key={msg.id}
@@ -119,13 +117,12 @@ export default function Chat() {
                 animate={{ opacity: 1, y: 0 }}
                 className={cn("flex gap-3 max-w-[80%]", isMe ? "ml-auto flex-row-reverse" : "")}
               >
-                <Avatar className="w-8 h-8 mt-1">
-                  <AvatarImage src={getSenderAvatar(msg.senderId)} />
-                  <AvatarFallback>U</AvatarFallback>
-                </Avatar>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-medium text-xs mt-1 ${getAvatarColor(senderName)}`}>
+                  {getSenderInitials(msg.senderId)}
+                </div>
                 <div>
                   <div className={cn("flex items-baseline gap-2 mb-1", isMe ? "justify-end" : "")}>
-                    {!isMe && <span className="text-xs font-medium text-muted-foreground">{getSenderName(msg.senderId)}</span>}
+                    {!isMe && <span className="text-xs font-medium text-muted-foreground">{senderName}</span>}
                     <span className="text-[10px] text-muted-foreground/60">{msg.timestamp}</span>
                   </div>
                   <div className={cn(
@@ -153,8 +150,9 @@ export default function Chat() {
               onChange={(e) => setInput(e.target.value)}
               placeholder="Type a message..." 
               className="flex-1 rounded-full bg-slate-50 border-slate-200 focus:ring-primary/20"
+              data-testid="input-chat-message"
             />
-            <Button type="submit" size="icon" className="rounded-full bg-primary hover:bg-primary/90 shadow-md" disabled={!input.trim()}>
+            <Button type="submit" size="icon" className="rounded-full bg-primary hover:bg-primary/90 shadow-md" disabled={!input.trim()} data-testid="button-send-message">
               <Send className="w-4 h-4" />
             </Button>
           </form>
@@ -174,8 +172,12 @@ export default function Chat() {
               <p className="font-bold text-foreground">Talula's Garden</p>
               <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
                 <span className="flex -space-x-2">
-                  <Avatar className="w-6 h-6 border-2 border-white"><AvatarImage src={currentUser.avatar} /></Avatar>
-                  <Avatar className="w-6 h-6 border-2 border-white"><AvatarImage src={currentMatch.avatars[0]} /></Avatar>
+                  <div className={`w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-white font-medium text-[10px] ${getAvatarColor(currentUser.name)}`}>
+                    {getInitials(currentUser.name)}
+                  </div>
+                  <div className={`w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-white font-medium text-[10px] ${getAvatarColor(currentMatch.names[0])}`}>
+                    {getInitials(currentMatch.names[0])}
+                  </div>
                 </span>
                 <span>voted for this</span>
               </div>

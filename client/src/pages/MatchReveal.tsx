@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { MessageCircle, Calendar, Sparkles, Star } from "lucide-react";
 import { Link } from "wouter";
-import { currentMatch } from "@/lib/mockData";
+import { currentMatch, getInitials, getAvatarColor } from "@/lib/mockData";
 import confetti from "canvas-confetti";
 
 export default function MatchReveal() {
@@ -70,12 +70,18 @@ export default function MatchReveal() {
           <div className="grid md:grid-cols-2 gap-8 mb-12">
             {/* Match Profile Card */}
             <Card className="overflow-hidden border-none shadow-xl bg-white/80 backdrop-blur-sm">
-              <div className="aspect-video relative">
-                <div className="absolute inset-0 flex">
-                  <img src={currentMatch.avatars[0]} className="w-1/2 h-full object-cover" alt="Match 1" />
-                  <img src={currentMatch.avatars[1]} className="w-1/2 h-full object-cover" alt="Match 2" />
+              <div className="aspect-video relative bg-gradient-to-br from-primary/20 to-tertiary/20">
+                <div className="absolute inset-0 flex items-center justify-center gap-4">
+                  {currentMatch.names.map((name, i) => (
+                    <div 
+                      key={i}
+                      className={`w-24 h-24 rounded-full flex items-center justify-center text-white font-bold text-2xl ${getAvatarColor(name)}`}
+                    >
+                      {getInitials(name)}
+                    </div>
+                  ))}
                 </div>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                 <div className="absolute bottom-0 left-0 p-6 text-white">
                   <h2 className="font-heading font-bold text-3xl">{currentMatch.names.join(" & ")}</h2>
                   <div className="flex gap-2 mt-2">
@@ -117,12 +123,12 @@ export default function MatchReveal() {
                 
                 <div className="space-y-4">
                   <Link href="/chat">
-                    <Button size="lg" className="w-full h-14 text-lg rounded-xl shadow-lg shadow-primary/20">
+                    <Button size="lg" className="w-full h-14 text-lg rounded-xl shadow-lg shadow-primary/20" data-testid="button-start-chat">
                       <MessageCircle className="mr-2 w-5 h-5" /> Start Group Chat
                     </Button>
                   </Link>
                   <Link href="/dates">
-                    <Button size="lg" variant="outline" className="w-full h-14 text-lg rounded-xl border-2">
+                    <Button size="lg" variant="outline" className="w-full h-14 text-lg rounded-xl border-2" data-testid="button-browse-dates">
                       <Calendar className="mr-2 w-5 h-5" /> Browse Date Ideas
                     </Button>
                   </Link>
