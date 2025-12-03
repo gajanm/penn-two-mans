@@ -283,13 +283,28 @@ export default function Auth() {
                         <FormControl>
                           <Input 
                             data-testid="input-code"
-                            placeholder="000000" 
+                            placeholder="Enter 6-digit code" 
                             maxLength={6}
+                            inputMode="numeric"
+                            autoComplete="one-time-code"
                             {...field} 
-                            className="h-14 text-center text-2xl tracking-[0.5em] font-mono rounded-xl bg-white/50 border-border focus:border-primary focus:ring-primary/20 transition-all" 
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+                              field.onChange(value);
+                            }}
+                            onPaste={(e) => {
+                              e.preventDefault();
+                              const pastedText = e.clipboardData.getData('text');
+                              const digits = pastedText.replace(/\D/g, '').slice(0, 6);
+                              field.onChange(digits);
+                            }}
+                            className="h-14 text-center text-2xl tracking-widest font-mono rounded-xl bg-white/50 border-border focus:border-primary focus:ring-primary/20 transition-all" 
                           />
                         </FormControl>
                         <FormMessage />
+                        <p className="text-xs text-muted-foreground text-center mt-2">
+                          You can paste the code directly from your email
+                        </p>
                       </FormItem>
                     )}
                   />
