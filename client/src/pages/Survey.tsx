@@ -185,6 +185,7 @@ export default function Survey() {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [, setLocation] = useLocation();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [checkingProfile, setCheckingProfile] = useState(true);
   const { user, loading } = useAuth();
   const { toast } = useToast();
   const [answers, setAnswers] = useState<SurveyData>({
@@ -196,6 +197,42 @@ export default function Survey() {
   useEffect(() => {
     if (!loading && !user) {
       setLocation("/auth");
+    }
+  }, [user, loading, setLocation]);
+
+  useEffect(() => {
+    async function checkSurveyCompleted() {
+      if (!user) return;
+      
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+        
+        if (!token) {
+          setCheckingProfile(false);
+          return;
+        }
+
+        const response = await fetch('/api/profile', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          const profile = await response.json();
+          if (profile?.survey_completed) {
+            setLocation("/dashboard");
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Error checking profile:', error);
+      } finally {
+        setCheckingProfile(false);
+      }
+    }
+
+    if (!loading && user) {
+      checkSurveyCompleted();
     }
   }, [user, loading, setLocation]);
 
@@ -329,7 +366,7 @@ export default function Survey() {
     }
   };
 
-  if (loading) {
+  if (loading || checkingProfile) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />

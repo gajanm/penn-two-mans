@@ -321,5 +321,237 @@ export async function registerRoutes(
     }
   });
 
+  // Partner Invite Endpoints
+  app.post("/api/partner-invites", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      const { receiver_id } = req.body;
+
+      if (!receiver_id) {
+        return res.status(400).json({ message: "Receiver ID is required" });
+      }
+
+      if (receiver_id === user.id) {
+        return res.status(400).json({ message: "You cannot invite yourself" });
+      }
+
+      // Check if user already has an accepted partner
+      const { data: profile } = await supabaseAdmin
+        .from('profiles')
+        .select('partner_id')
+        .eq('id', user.id)
+        .single();
+
+      if (profile?.partner_id) {
+        return res.status(400).json({ message: "You already have a partner for this week" });
+      }
+
+      // Check for existing pending invite between these users
+      const { data: existingInvite } = await supabaseAdmin
+        .from('partner_invites')
+        .select('id')
+        .eq('status', 'pending')
+        .or(`and(sender_id.eq.${user.id},receiver_id.eq.${receiver_id}),and(sender_id.eq.${receiver_id},receiver_id.eq.${user.id})`)
+        .single();
+
+      if (existingInvite) {
+        return res.status(400).json({ message: "There's already a pending invite between you two" });
+      }
+
+      const { data: invite, error } = await supabaseAdmin
+        .from('partner_invites')
+        .insert({
+          sender_id: user.id,
+          receiver_id,
+          status: 'pending',
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Invite creation error:", error);
+        return res.status(400).json({ message: error.message });
+      }
+
+      res.status(201).json(invite);
+    } catch (error) {
+      console.error("Invite error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/partner-invites", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+
+      // Get sent invites with receiver info
+      const { data: sent, error: sentError } = await supabaseAdmin
+        .from('partner_invites')
+        .select(`
+          id, status, created_at, responded_at,
+          receiver:profiles!partner_invites_receiver_id_fkey(id, email, full_name, major, graduation_year, gender)
+        `)
+        .eq('sender_id', user.id)
+        .order('created_at', { ascending: false });
+
+      // Get received invites with sender info
+      const { data: received, error: receivedError } = await supabaseAdmin
+        .from('partner_invites')
+        .select(`
+          id, status, created_at, responded_at,
+          sender:profiles!partner_invites_sender_id_fkey(id, email, full_name, major, graduation_year, gender)
+        `)
+        .eq('receiver_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (sentError || receivedError) {
+        console.error("Invite fetch error:", sentError || receivedError);
+        return res.status(400).json({ message: (sentError || receivedError)?.message });
+      }
+
+      res.json({ sent: sent || [], received: received || [] });
+    } catch (error) {
+      console.error("Invites error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/partner-invites/:id/accept", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      const inviteId = req.params.id;
+
+      // Get the invite
+      const { data: invite, error: inviteError } = await supabaseAdmin
+        .from('partner_invites')
+        .select('*')
+        .eq('id', inviteId)
+        .single();
+
+      if (inviteError || !invite) {
+        return res.status(404).json({ message: "Invite not found" });
+      }
+
+      if (invite.receiver_id !== user.id) {
+        return res.status(403).json({ message: "You can only accept invites sent to you" });
+      }
+
+      if (invite.status !== 'pending') {
+        return res.status(400).json({ message: "This invite is no longer pending" });
+      }
+
+      // Check if either user already has a partner
+      const { data: profiles } = await supabaseAdmin
+        .from('profiles')
+        .select('id, partner_id')
+        .in('id', [invite.sender_id, invite.receiver_id]);
+
+      const hasPartner = profiles?.some(p => p.partner_id);
+      if (hasPartner) {
+        return res.status(400).json({ message: "One of you already has a partner for this week" });
+      }
+
+      // Update invite status
+      await supabaseAdmin
+        .from('partner_invites')
+        .update({ status: 'accepted', responded_at: new Date().toISOString() })
+        .eq('id', inviteId);
+
+      // Set partner_id for both users
+      await supabaseAdmin
+        .from('profiles')
+        .update({ partner_id: invite.receiver_id })
+        .eq('id', invite.sender_id);
+
+      await supabaseAdmin
+        .from('profiles')
+        .update({ partner_id: invite.sender_id })
+        .eq('id', invite.receiver_id);
+
+      // Cancel all other pending invites for both users
+      await supabaseAdmin
+        .from('partner_invites')
+        .update({ status: 'cancelled', responded_at: new Date().toISOString() })
+        .eq('status', 'pending')
+        .or(`sender_id.eq.${invite.sender_id},sender_id.eq.${invite.receiver_id},receiver_id.eq.${invite.sender_id},receiver_id.eq.${invite.receiver_id}`)
+        .neq('id', inviteId);
+
+      res.json({ message: "Partner invite accepted!" });
+    } catch (error) {
+      console.error("Accept invite error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/partner-invites/:id/reject", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      const inviteId = req.params.id;
+
+      const { data: invite, error: inviteError } = await supabaseAdmin
+        .from('partner_invites')
+        .select('*')
+        .eq('id', inviteId)
+        .single();
+
+      if (inviteError || !invite) {
+        return res.status(404).json({ message: "Invite not found" });
+      }
+
+      if (invite.receiver_id !== user.id) {
+        return res.status(403).json({ message: "You can only reject invites sent to you" });
+      }
+
+      if (invite.status !== 'pending') {
+        return res.status(400).json({ message: "This invite is no longer pending" });
+      }
+
+      await supabaseAdmin
+        .from('partner_invites')
+        .update({ status: 'rejected', responded_at: new Date().toISOString() })
+        .eq('id', inviteId);
+
+      res.json({ message: "Invite declined" });
+    } catch (error) {
+      console.error("Reject invite error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/partner-invites/:id/cancel", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      const inviteId = req.params.id;
+
+      const { data: invite, error: inviteError } = await supabaseAdmin
+        .from('partner_invites')
+        .select('*')
+        .eq('id', inviteId)
+        .single();
+
+      if (inviteError || !invite) {
+        return res.status(404).json({ message: "Invite not found" });
+      }
+
+      if (invite.sender_id !== user.id) {
+        return res.status(403).json({ message: "You can only cancel invites you sent" });
+      }
+
+      if (invite.status !== 'pending') {
+        return res.status(400).json({ message: "This invite is no longer pending" });
+      }
+
+      await supabaseAdmin
+        .from('partner_invites')
+        .update({ status: 'cancelled', responded_at: new Date().toISOString() })
+        .eq('id', inviteId);
+
+      res.json({ message: "Invite cancelled" });
+    } catch (error) {
+      console.error("Cancel invite error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   return httpServer;
 }
