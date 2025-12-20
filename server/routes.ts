@@ -15,6 +15,15 @@ const signupSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
+const otpEmailSchema = z.object({
+  email: pennEmailSchema,
+});
+
+const otpVerifySchema = z.object({
+  email: z.string().email(),
+  code: z.string().length(8, "Code must be 8 digits").regex(/^\d+$/, "Code must be numbers only"),
+});
+
 const profileUpdateSchema = z.object({
   full_name: z.string().optional(),
   gender: z.string().optional(),
@@ -147,6 +156,95 @@ export async function registerRoutes(
       });
     } catch (error) {
       console.error("Login error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // OTP Auth - Send verification code to Penn email
+  app.post("/api/auth/otp/send", async (req: Request, res: Response) => {
+    try {
+      const result = otpEmailSchema.safeParse(req.body);
+      
+      if (!result.success) {
+        return res.status(400).json({ 
+          message: result.error.errors[0]?.message || "Invalid email" 
+        });
+      }
+
+      const { email } = result.data;
+
+      // Use Supabase to send OTP (admin client not needed for this)
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: true,
+        },
+      });
+
+      if (error) {
+        console.error("OTP send error:", error);
+        return res.status(400).json({ message: "Failed to send verification code. Please try again." });
+      }
+
+      res.json({ message: "Verification code sent to your Penn email" });
+    } catch (error) {
+      console.error("OTP send error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // OTP Auth - Verify code and sign in
+  app.post("/api/auth/otp/verify", async (req: Request, res: Response) => {
+    try {
+      const result = otpVerifySchema.safeParse(req.body);
+      
+      if (!result.success) {
+        return res.status(400).json({ 
+          message: result.error.errors[0]?.message || "Invalid input" 
+        });
+      }
+
+      const { email, code } = result.data;
+
+      // Verify OTP with Supabase
+      const { data, error } = await supabase.auth.verifyOtp({
+        email,
+        token: code,
+        type: "email",
+      });
+
+      if (error) {
+        console.error("OTP verify error:", error);
+        return res.status(401).json({ message: "Invalid or expired code. Please try again." });
+      }
+
+      if (!data.user) {
+        return res.status(401).json({ message: "Authentication failed" });
+      }
+
+      // Create profile if it doesn't exist
+      const { data: existingProfile } = await supabaseAdmin
+        .from('profiles')
+        .select('id')
+        .eq('id', data.user.id)
+        .single();
+
+      if (!existingProfile) {
+        await supabaseAdmin
+          .from('profiles')
+          .insert({
+            id: data.user.id,
+            email: data.user.email || email,
+          });
+      }
+
+      res.json({ 
+        user: data.user,
+        session: data.session,
+        message: "Logged in successfully"
+      });
+    } catch (error) {
+      console.error("OTP verify error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });

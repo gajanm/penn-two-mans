@@ -78,18 +78,19 @@ export default function Auth() {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: values.email,
-        options: {
-          shouldCreateUser: true,
-        },
+      const response = await fetch("/api/auth/otp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: values.email }),
       });
 
-      if (error) {
+      const data = await response.json();
+
+      if (!response.ok) {
         toast({
           variant: "destructive",
           title: "Error",
-          description: error.message,
+          description: data.message || "Failed to send verification code",
         });
         return;
       }
@@ -98,7 +99,7 @@ export default function Auth() {
       setStep("code");
       toast({
         title: "Check your email!",
-        description: "We've sent a 6-digit code to your Penn email.",
+        description: "We've sent an 8-digit code to your Penn email.",
       });
     } catch (error) {
       toast({
@@ -115,18 +116,19 @@ export default function Auth() {
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.verifyOtp({
-        email,
-        token: values.code,
-        type: "email",
+      const response = await fetch("/api/auth/otp/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code: values.code }),
       });
 
-      if (error) {
+      const data = await response.json();
+
+      if (!response.ok) {
         toast({
           variant: "destructive",
           title: "Invalid code",
-          description:
-            "The code you entered is incorrect or expired. Please try again.",
+          description: data.message || "Please try again.",
         });
         return;
       }
@@ -156,18 +158,19 @@ export default function Auth() {
   async function resendCode() {
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          shouldCreateUser: true,
-        },
+      const response = await fetch("/api/auth/otp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
       });
 
-      if (error) {
+      const data = await response.json();
+
+      if (!response.ok) {
         toast({
           variant: "destructive",
           title: "Error",
-          description: error.message,
+          description: data.message || "Failed to resend code",
         });
         return;
       }
