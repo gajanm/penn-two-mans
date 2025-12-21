@@ -75,9 +75,15 @@ export default function Auth() {
         return;
       }
 
-      // Store user in context and localStorage
+      // Store user and token in context and localStorage
       setUser({ id: data.user.id, email: values.email });
       localStorage.setItem('user', JSON.stringify({ id: data.user.id, email: values.email }));
+      
+      // Store session token
+      if (data.session) {
+        localStorage.setItem('auth_token', data.session.access_token);
+        sessionStorage.setItem('auth_token', data.session.access_token);
+      }
 
       toast({
         title: mode === "login" ? "Welcome back!" : "Account created!",

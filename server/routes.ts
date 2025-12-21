@@ -103,8 +103,20 @@ export async function registerRoutes(
           return res.status(400).json({ message: "Failed to create profile" });
         }
 
+        // Sign in to get session
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (signInError) {
+          console.error("Sign in after signup error:", signInError);
+          return res.status(400).json({ message: "Account created but failed to sign in" });
+        }
+
         return res.status(201).json({ 
           user: { id: data.user.id, email },
+          session: signInData.session,
           message: "Account created successfully"
         });
       }
@@ -140,6 +152,7 @@ export async function registerRoutes(
 
       res.json({ 
         user: { id: data.user.id, email },
+        session: data.session,
       });
     } catch (error) {
       console.error("Login error:", error);

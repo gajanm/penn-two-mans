@@ -205,8 +205,7 @@ export default function Survey() {
       if (!user) return;
       
       try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData?.session?.access_token;
+        const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
         
         if (!token) {
           setCheckingProfile(false);
@@ -292,8 +291,7 @@ export default function Survey() {
     
     setIsSubmitting(true);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
+      const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
       
       if (!token) {
         throw new Error("Not authenticated");
