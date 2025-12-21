@@ -1,16 +1,16 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 interface AuthContextType {
-  user: { id: string; username: string } | null;
+  user: { id: string; email: string } | null;
   loading: boolean;
-  setUser: (user: { id: string; username: string } | null) => void;
+  setUser: (user: { id: string; email: string } | null) => void;
   signOut: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<{ id: string; username: string } | null>(null);
+  const [user, setUser] = useState<{ id: string; email: string } | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {

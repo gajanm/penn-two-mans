@@ -14,16 +14,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, Heart, User, Lock } from "lucide-react";
+import { ArrowRight, Heart, Mail, Lock } from "lucide-react";
 import collageImage from "@assets/generated_images/collage_style_image_of_philadelphia_romantic_spots..png";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 
 const authSchema = z.object({
-  username: z
-    .string()
-    .min(3, "Username must be at least 3 characters")
-    .max(20, "Username must be at most 20 characters"),
+  email: z.string().email("Please enter a valid email"),
   password: z
     .string()
     .min(6, "Password must be at least 6 characters"),
@@ -40,7 +37,7 @@ export default function Auth() {
 
   const form = useForm<z.infer<typeof authSchema>>({
     resolver: zodResolver(authSchema),
-    defaultValues: { username: "", password: "" },
+    defaultValues: { email: "", password: "" },
   });
 
   useEffect(() => {
@@ -72,8 +69,8 @@ export default function Auth() {
       }
 
       // Store user in context and localStorage
-      setUser({ id: data.user.id, username: values.username });
-      localStorage.setItem('user', JSON.stringify({ id: data.user.id, username: values.username }));
+      setUser({ id: data.user.id, email: values.email });
+      localStorage.setItem('user', JSON.stringify({ id: data.user.id, email: values.email }));
 
       toast({
         title: mode === "login" ? "Welcome back!" : "Account created!",
@@ -140,16 +137,17 @@ export default function Auth() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
-                name="username"
+                name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Username</FormLabel>
+                    <FormLabel>Email</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                         <Input
-                          data-testid="input-username"
-                          placeholder="Enter your username"
+                          data-testid="input-email"
+                          type="email"
+                          placeholder="Enter your email"
                           {...field}
                           className="h-12 pl-12 rounded-xl bg-white/50 border-border focus:border-primary focus:ring-primary/20 transition-all"
                         />

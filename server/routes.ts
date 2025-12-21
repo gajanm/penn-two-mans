@@ -11,7 +11,7 @@ const pennEmailSchema = z.string().email().refine(email => {
 });
 
 const authSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters").max(20, "Username must be at most 20 characters"),
+  email: z.string().email("Please enter a valid email"),
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
@@ -65,23 +65,22 @@ export async function registerRoutes(
         });
       }
 
-      const { username, password } = result.data;
+      const { email, password } = result.data;
 
-      // Check if username already exists
+      // Check if email already exists
       const { data: existingUser } = await supabaseAdmin
         .from('profiles')
         .select('id')
-        .eq('username', username)
+        .eq('email', email)
         .single();
 
       if (existingUser) {
-        return res.status(400).json({ message: "Username already taken" });
+        return res.status(400).json({ message: "Email already registered" });
       }
 
-      // Create auth user with email format for Supabase
-      const tempEmail = `${username.toLowerCase()}@penndoubledate.local`;
+      // Create auth user with Supabase
       const { data, error } = await supabaseAdmin.auth.admin.createUser({
-        email: tempEmail,
+        email,
         password,
         email_confirm: true,
       });
@@ -91,13 +90,12 @@ export async function registerRoutes(
       }
 
       if (data.user) {
-        // Create profile with username
+        // Create profile
         const { error: profileError } = await supabaseAdmin
           .from('profiles')
           .insert({
             id: data.user.id,
-            username: username,
-            email: tempEmail,
+            email: email,
           });
 
         if (profileError) {
@@ -106,7 +104,7 @@ export async function registerRoutes(
         }
 
         return res.status(201).json({ 
-          user: { id: data.user.id, username },
+          user: { id: data.user.id, email },
           message: "Account created successfully"
         });
       }
@@ -128,31 +126,20 @@ export async function registerRoutes(
         });
       }
 
-      const { username, password } = result.data;
+      const { email, password } = result.data;
 
-      // Find user by username
-      const { data: profile, error: profileError } = await supabaseAdmin
-        .from('profiles')
-        .select('id, email')
-        .eq('username', username)
-        .single();
-
-      if (profileError || !profile) {
-        return res.status(401).json({ message: "Invalid username or password" });
-      }
-
-      // Try to login with email
+      // Try to login with email and password
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: profile.email,
+        email,
         password,
       });
 
       if (error) {
-        return res.status(401).json({ message: "Invalid username or password" });
+        return res.status(401).json({ message: "Invalid email or password" });
       }
 
       res.json({ 
-        user: { id: data.user.id, username },
+        user: { id: data.user.id, email },
       });
     } catch (error) {
       console.error("Login error:", error);
