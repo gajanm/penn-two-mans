@@ -13,7 +13,6 @@ import MatchReveal from "@/pages/MatchReveal";
 import Chat from "@/pages/Chat";
 import DateIdeas from "@/pages/DateIdeas";
 import Settings from "@/pages/Settings";
-import Users from "@/pages/Users";
 import { AnimatePresence } from "framer-motion";
 import React from "react";
 import Layout from "./components/Layout";
@@ -63,11 +62,6 @@ function Router() {
         <Route path="/settings">
           <ProtectedRoute>
             <Layout><Settings /></Layout>
-          </ProtectedRoute>
-        </Route>
-        <Route path="/users">
-          <ProtectedRoute>
-            <Users />
           </ProtectedRoute>
         </Route>
 
