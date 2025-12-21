@@ -34,9 +34,8 @@ export default function Dashboard() {
 
   const userName = profile?.full_name || user?.email?.split('@')[0] || 'there';
 
-  async function getToken() {
-    const { data: sessionData } = await supabase.auth.getSession();
-    return sessionData?.session?.access_token;
+  function getToken() {
+    return localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
   }
 
   async function fetchData() {

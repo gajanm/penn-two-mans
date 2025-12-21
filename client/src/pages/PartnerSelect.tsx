@@ -47,9 +47,8 @@ export default function PartnerSelect() {
 
   const pendingReceivedCount = invites.received.filter(i => i.status === 'pending').length;
 
-  async function getToken() {
-    const { data: sessionData } = await supabase.auth.getSession();
-    return sessionData?.session?.access_token;
+  function getToken() {
+    return localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
   }
 
   async function fetchData() {
