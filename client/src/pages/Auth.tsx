@@ -19,8 +19,15 @@ import collageImage from "@assets/generated_images/collage_style_image_of_philad
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 
+const pennEmailSchema = z.string().email("Please enter a valid email").refine(email => {
+  const allowedDomains = ["@upenn.edu", "@seas.upenn.edu", "@sas.upenn.edu", "@wharton.upenn.edu"];
+  return allowedDomains.some(domain => email.endsWith(domain));
+}, {
+  message: "Must be a valid Penn email (@upenn.edu, @seas, @sas, or @wharton)",
+});
+
 const authSchema = z.object({
-  email: z.string().email("Please enter a valid email"),
+  email: pennEmailSchema,
   password: z
     .string()
     .min(6, "Password must be at least 6 characters"),
@@ -140,19 +147,20 @@ export default function Auth() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>Penn Email</FormLabel>
                     <FormControl>
                       <div className="relative">
                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                         <Input
                           data-testid="input-email"
                           type="email"
-                          placeholder="Enter your email"
+                          placeholder="your.name@upenn.edu"
                           {...field}
                           className="h-12 pl-12 rounded-xl bg-white/50 border-border focus:border-primary focus:ring-primary/20 transition-all"
                         />
                       </div>
                     </FormControl>
+                    <p className="text-xs text-muted-foreground mt-1">Use your Penn email (@upenn.edu, @seas, @sas, or @wharton)</p>
                     <FormMessage />
                   </FormItem>
                 )}

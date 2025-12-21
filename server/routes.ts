@@ -11,7 +11,7 @@ const pennEmailSchema = z.string().email().refine(email => {
 });
 
 const authSchema = z.object({
-  email: z.string().email("Please enter a valid email"),
+  email: pennEmailSchema,
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
