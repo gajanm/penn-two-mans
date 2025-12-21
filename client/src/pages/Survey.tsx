@@ -91,7 +91,7 @@ function ScrollableOptions({ children }: { children: React.ReactNode }) {
     <div className="relative">
       <div 
         ref={scrollRef}
-        className="space-y-3 max-h-[380px] overflow-y-auto pr-2 pb-4"
+        className="space-y-4 max-h-[600px] overflow-y-auto pr-2 pb-4"
       >
         {children}
       </div>
@@ -449,11 +449,11 @@ export default function Survey() {
                 />
               ) : (
                 <>
-                  <div className="mb-6">
+                  <div className="mb-8">
                     <span className="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium mb-3">
                       Question {completedQuestions + 1} of {totalQuestions}
                     </span>
-                    <h3 className="font-heading font-bold text-2xl text-foreground leading-tight">
+                    <h3 className="font-heading font-bold text-4xl text-foreground leading-tight">
                       {currentQ?.question}
                     </h3>
                     {currentQ?.type === "multi" && (
@@ -468,7 +468,7 @@ export default function Survey() {
                       <RadioGroup 
                         value={currentAnswer as string || ""} 
                         onValueChange={handleAnswer}
-                        className="space-y-3"
+                        className="space-y-4"
                       >
                         {currentQ.options.map((option, idx) => (
                           <motion.div
@@ -479,14 +479,14 @@ export default function Survey() {
                           >
                             <label 
                               htmlFor={option}
-                              className={`flex items-center gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200 hover:border-primary/50 hover:bg-primary/5 ${
+                              className={`flex items-center gap-4 p-5 rounded-2xl border-2 cursor-pointer transition-all duration-200 hover:border-primary/50 hover:bg-primary/5 ${
                                 currentAnswer === option 
                                   ? 'border-primary bg-primary/10 shadow-md' 
                                   : 'border-border/50 bg-white'
                               }`}
                             >
                               <RadioGroupItem value={option} id={option} className="sr-only" />
-                              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 ${
                                 currentAnswer === option 
                                   ? 'border-primary bg-primary' 
                                   : 'border-muted-foreground/30'
@@ -495,11 +495,11 @@ export default function Survey() {
                                   <motion.div
                                     initial={{ scale: 0 }}
                                     animate={{ scale: 1 }}
-                                    className="w-2 h-2 rounded-full bg-white"
+                                    className="w-2.5 h-2.5 rounded-full bg-white"
                                   />
                                 )}
                               </div>
-                              <span className={`flex-1 font-medium ${currentAnswer === option ? 'text-primary' : 'text-foreground'}`}>
+                              <span className={`flex-1 font-medium text-lg ${currentAnswer === option ? 'text-primary' : 'text-foreground'}`}>
                                 {option}
                               </span>
                             </label>
@@ -507,7 +507,7 @@ export default function Survey() {
                         ))}
                       </RadioGroup>
                     ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {currentQ?.options.map((option, idx) => {
                           const selectedOptions = (currentAnswer as string[]) || [];
                           const isSelected = selectedOptions.includes(option);
@@ -521,7 +521,7 @@ export default function Survey() {
                               transition={{ delay: idx * 0.03 }}
                             >
                               <label 
-                                className={`flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200 ${
+                                className={`flex items-center gap-3 p-5 rounded-2xl border-2 cursor-pointer transition-all duration-200 ${
                                   isSelected 
                                     ? 'border-primary bg-primary/10 shadow-md' 
                                     : canSelect
@@ -535,7 +535,7 @@ export default function Survey() {
                                   disabled={!canSelect}
                                   className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                                 />
-                                <span className={`flex-1 text-sm font-medium ${isSelected ? 'text-primary' : ''}`}>
+                                <span className={`flex-1 text-base font-medium ${isSelected ? 'text-primary' : ''}`}>
                                   {option}
                                 </span>
                               </label>
