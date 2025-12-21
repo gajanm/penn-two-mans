@@ -35,7 +35,7 @@ Preferred communication style: Simple, everyday language.
 
 **Key Pages:**
 - Landing: Marketing page with hero section
-- Auth: Split-screen login/signup with email verification
+- Auth: Split-screen login/signup with username & password
 - Survey: Multi-step onboarding with progress tracking
 - Dashboard: Weekly status and partner overview
 - Partner Selection: Friend selection interface
@@ -61,8 +61,8 @@ Preferred communication style: Simple, everyday language.
 - All protected endpoints verify tokens via authenticateToken middleware
 
 **API Structure:**
-- POST /api/auth/signup - User registration with Penn email validation (uses service role)
-- POST /api/auth/login - Authentication via Supabase
+- POST /api/auth/signup - User registration with username/password
+- POST /api/auth/login - Authentication with username/password
 - GET /api/profile - Get user profile (requires auth)
 - PUT /api/profile - Update user profile (requires auth)
 - POST /api/survey - Save survey responses (requires auth)
@@ -70,7 +70,7 @@ Preferred communication style: Simple, everyday language.
 
 **Data Models:**
 Supabase tables:
-- profiles: User profile data (id, email, full_name, gender, interested_in, graduation_year, major, height, survey_completed)
+- profiles: User profile data (id, username, email, full_name, gender, interested_in, graduation_year, major, height, survey_completed)
 - survey_responses: Survey answers (id, user_id, answers JSONB, created_at, updated_at)
 
 ### Database Design
@@ -93,32 +93,26 @@ Both tables have RLS policies to ensure users can only access their own data.
 
 ### Authentication & Authorization
 
-**Strategy:** Supabase Auth with server-side domain validation
+**Strategy:** Simple username/password authentication via Supabase Auth
 
 **Flow:**
-1. User submits email/password to /api/auth/signup
-2. Server validates email against Penn domain whitelist using Zod
-3. Server creates user via Supabase Admin API (service role key)
-4. Email auto-confirmed for verified Penn domains
-5. Session returned to client and stored via Supabase client
+1. User submits username/password to /api/auth/signup
+2. Server checks if username is available
+3. Server creates Supabase auth user with generated email (username@penndoubledate.local)
+4. Server stores username in profiles table
+5. User stored in localStorage with user ID and username
 6. Protected routes check auth state via AuthContext
-7. API requests include JWT token in Authorization header
+7. All authenticated operations use stored user ID
 
-**Security Configuration:**
-- SUPABASE_SERVICE_ROLE_KEY: Server-only key for creating users
-- SUPABASE_ANON_KEY: Client-side key for authenticated operations
-- Penn email validation enforced server-side before user creation
-
-**IMPORTANT Security Requirement:**
-To fully prevent bypassing Penn email restrictions, you must disable email signup in Supabase:
-1. Go to Supabase Dashboard → Authentication → Providers → Email
-2. Turn OFF "Enable Email Signup"
-This forces all signups through the server endpoint which validates Penn emails.
+**Signup/Login:**
+- Signup: New username (3-20 chars) + password (6+ chars minimum)
+- Login: Same username/password credentials
+- Instant authentication - no email verification needed
 
 **Protected Routes:**
 - ProtectedRoute component redirects unauthenticated users to /auth
-- authenticateToken middleware verifies JWT on API endpoints
-- Returns 401 for unauthorized access
+- AuthContext stores user in localStorage for persistence
+- Returns to /auth if user not authenticated
 
 ### Build & Deployment
 

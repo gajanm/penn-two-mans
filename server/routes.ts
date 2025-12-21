@@ -10,9 +10,9 @@ const pennEmailSchema = z.string().email().refine(email => {
   message: "Must be a valid Penn email (@upenn.edu, @seas, @sas, or @wharton)",
 });
 
-const signupSchema = z.object({
+const authSchema = z.object({
   email: pennEmailSchema,
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 const profileUpdateSchema = z.object({
@@ -57,7 +57,7 @@ export async function registerRoutes(
 
   app.post("/api/auth/signup", async (req: Request, res: Response) => {
     try {
-      const result = signupSchema.safeParse(req.body);
+      const result = authSchema.safeParse(req.body);
       
       if (!result.success) {
         return res.status(400).json({ 
@@ -67,11 +67,22 @@ export async function registerRoutes(
 
       const { email, password } = result.data;
 
-      // Use admin client to create user (bypasses any client-side restrictions)
+      // Check if email already exists
+      const { data: existingUser } = await supabaseAdmin
+        .from('profiles')
+        .select('id')
+        .eq('email', email)
+        .single();
+
+      if (existingUser) {
+        return res.status(400).json({ message: "Email already registered" });
+      }
+
+      // Create auth user with Supabase
       const { data, error } = await supabaseAdmin.auth.admin.createUser({
         email,
         password,
-        email_confirm: true, // Auto-confirm email for Penn users
+        email_confirm: true,
       });
 
       if (error) {
@@ -79,7 +90,7 @@ export async function registerRoutes(
       }
 
       if (data.user) {
-        // Create profile using admin client (bypasses RLS)
+        // Create profile
         const { error: profileError } = await supabaseAdmin
           .from('profiles')
           .insert({
@@ -89,35 +100,28 @@ export async function registerRoutes(
 
         if (profileError) {
           console.error("Profile creation error:", profileError);
+          return res.status(400).json({ message: "Failed to create profile" });
         }
 
-        // Sign in the user to get a session
+        // Sign in to get session
         const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
         if (signInError) {
-          // User created but couldn't sign in - they can login manually
-          return res.status(201).json({ 
-            user: data.user,
-            session: null,
-            message: "Account created! Please log in."
-          });
+          console.error("Sign in after signup error:", signInError);
+          return res.status(400).json({ message: "Account created but failed to sign in" });
         }
 
         return res.status(201).json({ 
-          user: data.user,
+          user: { id: data.user.id, email },
           session: signInData.session,
-          message: "Account created and logged in"
+          message: "Account created successfully"
         });
       }
 
-      res.status(201).json({ 
-        user: data.user,
-        session: null,
-        message: "Account created"
-      });
+      res.status(400).json({ message: "Failed to create account" });
     } catch (error) {
       console.error("Signup error:", error);
       res.status(500).json({ message: "Internal server error" });
@@ -126,24 +130,29 @@ export async function registerRoutes(
 
   app.post("/api/auth/login", async (req: Request, res: Response) => {
     try {
-      const { email, password } = req.body;
+      const result = authSchema.safeParse(req.body);
 
-      if (!email || !password) {
-        return res.status(400).json({ message: "Email and password are required" });
+      if (!result.success) {
+        return res.status(400).json({ 
+          message: result.error.errors[0]?.message || "Invalid input" 
+        });
       }
 
+      const { email, password } = result.data;
+
+      // Try to login with email and password
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
-        return res.status(401).json({ message: error.message });
+        return res.status(401).json({ message: "Invalid email or password" });
       }
 
       res.json({ 
-        user: data.user,
-        session: data.session 
+        user: { id: data.user.id, email },
+        session: data.session,
       });
     } catch (error) {
       console.error("Login error:", error);

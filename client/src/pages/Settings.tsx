@@ -177,8 +177,7 @@ export default function Settings() {
       if (!user) return;
       
       try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData?.session?.access_token;
+        const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
         
         if (!token) {
           setIsLoading(false);
@@ -255,8 +254,7 @@ export default function Settings() {
     
     setIsSaving(true);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
+      const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
       
       if (!token) {
         throw new Error("Not authenticated");
