@@ -627,5 +627,25 @@ export async function registerRoutes(
     }
   });
 
+  // Get all users (for admin purposes)
+  app.get("/api/users", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const { data: users, error } = await supabaseAdmin
+        .from('profiles')
+        .select('id, email, full_name, gender, graduation_year, major, survey_completed')
+        .order('id', { ascending: false });
+
+      if (error) {
+        console.error("Users fetch error:", error);
+        return res.status(400).json({ message: error.message });
+      }
+
+      res.json(users || []);
+    } catch (error) {
+      console.error("Users error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   return httpServer;
 }
