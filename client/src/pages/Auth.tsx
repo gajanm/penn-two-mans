@@ -49,7 +49,11 @@ export default function Auth() {
 
   useEffect(() => {
     if (!loading && user) {
-      setLocation("/survey");
+      // Only redirect if we have a valid token
+      const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+      if (token) {
+        setLocation("/survey");
+      }
     }
   }, [user, loading, setLocation]);
 
