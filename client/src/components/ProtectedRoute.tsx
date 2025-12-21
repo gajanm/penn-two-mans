@@ -1,8 +1,33 @@
+import { useAuth } from "@/contexts/AuthContext";
+import { useLocation } from "wouter";
+import { useEffect } from "react";
+import { Loader2 } from "lucide-react";
+
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
-  // Development mode - no authentication required
+  const { user, loading } = useAuth();
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      setLocation("/auth");
+    }
+  }, [user, loading, setLocation]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
   return <>{children}</>;
 }

@@ -14,58 +14,33 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, Heart, Mail, KeyRound, ArrowLeft } from "lucide-react";
+import { ArrowRight, Heart, User, Lock } from "lucide-react";
 import collageImage from "@assets/generated_images/collage_style_image_of_philadelphia_romantic_spots..png";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 
-const emailSchema = z.object({
-  email: z
+const authSchema = z.object({
+  username: z
     .string()
-    .email()
-    .refine(
-      (val) => {
-        const allowedDomains = [
-          "@upenn.edu",
-          "@seas.upenn.edu",
-          "@sas.upenn.edu",
-          "@wharton.upenn.edu",
-        ];
-        return allowedDomains.some((domain) => val.endsWith(domain));
-      },
-      {
-        message:
-          "Must be a valid Penn email (@upenn.edu, @seas, @sas, or @wharton)",
-      },
-    ),
+    .min(3, "Username must be at least 3 characters")
+    .max(20, "Username must be at most 20 characters"),
+  password: z
+    .string()
+    .min(6, "Password must be at least 6 characters"),
 });
 
-const codeSchema = z.object({
-  code: z
-    .string()
-    .length(8, "Code must be 8 digits")
-    .regex(/^\d+$/, "Code must be numbers only"),
-});
-
-type Step = "email" | "code";
+type AuthMode = "login" | "signup";
 
 export default function Auth() {
-  const [step, setStep] = useState<Step>("email");
-  const [email, setEmail] = useState("");
+  const [mode, setMode] = useState<AuthMode>("login");
   const [isLoading, setIsLoading] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { user, loading } = useAuth();
+  const { user, setUser, loading } = useAuth();
 
-  const emailForm = useForm<z.infer<typeof emailSchema>>({
-    resolver: zodResolver(emailSchema),
-    defaultValues: { email: "" },
-  });
-
-  const codeForm = useForm<z.infer<typeof codeSchema>>({
-    resolver: zodResolver(codeSchema),
-    defaultValues: { code: "" },
+  const form = useForm<z.infer<typeof authSchema>>({
+    resolver: zodResolver(authSchema),
+    defaultValues: { username: "", password: "" },
   });
 
   useEffect(() => {
@@ -74,14 +49,15 @@ export default function Auth() {
     }
   }, [user, loading, setLocation]);
 
-  async function onEmailSubmit(values: z.infer<typeof emailSchema>) {
+  async function onSubmit(values: z.infer<typeof authSchema>) {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/auth/otp/send", {
+      const endpoint = mode === "login" ? "/api/auth/login" : "/api/auth/signup";
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: values.email }),
+        body: JSON.stringify(values),
       });
 
       const data = await response.json();
@@ -90,52 +66,18 @@ export default function Auth() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: data.message || "Failed to send verification code",
+          description: data.message || "Authentication failed",
         });
         return;
       }
 
-      setEmail(values.email);
-      setStep("code");
-      toast({
-        title: "Check your email!",
-        description: "We've sent an 8-digit code to your Penn email.",
-      });
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Unable to send code. Please try again.",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  async function onCodeSubmit(values: z.infer<typeof codeSchema>) {
-    setIsLoading(true);
-
-    try {
-      const response = await fetch("/api/auth/otp/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code: values.code }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        toast({
-          variant: "destructive",
-          title: "Invalid code",
-          description: data.message || "Please try again.",
-        });
-        return;
-      }
+      // Store user in context and localStorage
+      setUser({ id: data.user.id, username: values.username });
+      localStorage.setItem('user', JSON.stringify({ id: data.user.id, username: values.username }));
 
       toast({
-        title: "Welcome!",
-        description: "You've been logged in successfully.",
+        title: mode === "login" ? "Welcome back!" : "Account created!",
+        description: mode === "login" ? "You've been logged in successfully." : "Let's get you set up!",
       });
 
       setLocation("/survey");
@@ -143,47 +85,7 @@ export default function Auth() {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Unable to verify code. Please try again.",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  function goBack() {
-    setStep("email");
-    codeForm.reset();
-  }
-
-  async function resendCode() {
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/auth/otp/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: data.message || "Failed to resend code",
-        });
-        return;
-      }
-
-      toast({
-        title: "Code resent!",
-        description: "Check your email for a new code.",
-      });
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Unable to resend code. Please try again.",
+        description: "Unable to process request. Please try again.",
       });
     } finally {
       setIsLoading(false);
@@ -219,173 +121,104 @@ export default function Auth() {
       </div>
 
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 relative bg-gradient-to-br from-background via-white to-primary/5">
-        <AnimatePresence mode="wait">
-          {step === "email" ? (
-            <motion.div
-              key="email-step"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="w-full max-w-md space-y-8"
-            >
-              <div className="text-center">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 text-primary mb-4">
-                  <Heart className="w-6 h-6 fill-current" />
-                </div>
-                <h1 className="font-heading font-bold text-3xl text-foreground">
-                  Welcome to Penn Double Date
-                </h1>
-                <p className="text-muted-foreground mt-2">
-                  Enter your Penn email to get started
-                </p>
-              </div>
+        <div className="w-full max-w-md space-y-8">
+          <div className="text-center">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 text-primary mb-4">
+              <Heart className="w-6 h-6 fill-current" />
+            </div>
+            <h1 className="font-heading font-bold text-3xl text-foreground">
+              Welcome to Penn Double Date
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              {mode === "login"
+                ? "Sign in to your account"
+                : "Create a new account"}
+            </p>
+          </div>
 
-              <Form {...emailForm}>
-                <form
-                  onSubmit={emailForm.handleSubmit(onEmailSubmit)}
-                  className="space-y-6"
-                >
-                  <FormField
-                    control={emailForm.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Penn Email</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                            <Input
-                              data-testid="input-email"
-                              placeholder="ben.franklin@upenn.edu"
-                              {...field}
-                              className="h-12 pl-12 rounded-xl bg-white/50 border-border focus:border-primary focus:ring-primary/20 transition-all"
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <FormField
+                control={form.control}
+                name="username"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Username</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                        <Input
+                          data-testid="input-username"
+                          placeholder="Enter your username"
+                          {...field}
+                          className="h-12 pl-12 rounded-xl bg-white/50 border-border focus:border-primary focus:ring-primary/20 transition-all"
+                        />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                  <Button
-                    data-testid="button-send-code"
-                    type="submit"
-                    disabled={isLoading}
-                    className="w-full h-12 rounded-xl text-base font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all hover:scale-[1.02]"
-                  >
-                    {isLoading ? "Sending..." : "Send Verification Code"}
-                    {!isLoading && <ArrowRight className="ml-2 w-4 h-4" />}
-                  </Button>
-                </form>
-              </Form>
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                        <Input
+                          data-testid="input-password"
+                          type="password"
+                          placeholder="Enter your password"
+                          {...field}
+                          className="h-12 pl-12 rounded-xl bg-white/50 border-border focus:border-primary focus:ring-primary/20 transition-all"
+                        />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-              <p className="text-center text-sm text-muted-foreground">
-                We'll send a 6-digit code to your email. No password needed!
-              </p>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="code-step"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="w-full max-w-md space-y-8"
-            >
-              <div className="text-center">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 text-primary mb-4">
-                  <KeyRound className="w-6 h-6" />
-                </div>
-                <h1 className="font-heading font-bold text-3xl text-foreground">
-                  Enter your code
-                </h1>
-                <p className="text-muted-foreground mt-2">
-                  We sent a 6-digit code to
-                  <br />
-                  <span className="font-medium text-foreground">{email}</span>
-                </p>
-              </div>
+              <Button
+                data-testid="button-submit"
+                type="submit"
+                disabled={isLoading}
+                className="w-full h-12 rounded-xl text-base font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all hover:scale-[1.02]"
+              >
+                {isLoading
+                  ? mode === "login"
+                    ? "Signing in..."
+                    : "Creating account..."
+                  : mode === "login"
+                    ? "Sign In"
+                    : "Create Account"}
+                {!isLoading && <ArrowRight className="ml-2 w-4 h-4" />}
+              </Button>
+            </form>
+          </Form>
 
-              <Form {...codeForm}>
-                <form
-                  onSubmit={codeForm.handleSubmit(onCodeSubmit)}
-                  className="space-y-6"
-                >
-                  <FormField
-                    control={codeForm.control}
-                    name="code"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Verification Code</FormLabel>
-                        <FormControl>
-                          <Input
-                            data-testid="input-code"
-                            placeholder="Enter 8-digit code"
-                            maxLength={8}
-                            inputMode="numeric"
-                            autoComplete="one-time-code"
-                            {...field}
-                            onChange={(e) => {
-                              const value = e.target.value
-                                .replace(/\D/g, "")
-                                .slice(0, 8);
-                              field.onChange(value);
-                            }}
-                            onPaste={(e) => {
-                              e.preventDefault();
-                              const pastedText =
-                                e.clipboardData.getData("text");
-                              const digits = pastedText
-                                .replace(/\D/g, "")
-                                .slice(0, 8);
-                              field.onChange(digits);
-                            }}
-                            className="h-14 text-center text-2xl tracking-widest font-mono rounded-xl bg-white/50 border-border focus:border-primary focus:ring-primary/20 transition-all"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                        <p className="text-xs text-muted-foreground text-center mt-2">
-                          You can paste the code directly from your email
-                        </p>
-                      </FormItem>
-                    )}
-                  />
-
-                  <Button
-                    data-testid="button-verify"
-                    type="submit"
-                    disabled={isLoading}
-                    className="w-full h-12 rounded-xl text-base font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all hover:scale-[1.02]"
-                  >
-                    {isLoading ? "Verifying..." : "Verify & Sign In"}
-                    {!isLoading && <ArrowRight className="ml-2 w-4 h-4" />}
-                  </Button>
-                </form>
-              </Form>
-
-              <div className="flex items-center justify-between">
-                <button
-                  data-testid="button-back"
-                  onClick={goBack}
-                  className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium inline-flex items-center gap-1"
-                  disabled={isLoading}
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Use different email
-                </button>
-                <button
-                  data-testid="button-resend"
-                  onClick={resendCode}
-                  className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium"
-                  disabled={isLoading}
-                >
-                  Resend code
-                </button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+          <div className="text-center">
+            <p className="text-muted-foreground">
+              {mode === "login"
+                ? "Don't have an account? "
+                : "Already have an account? "}
+              <button
+                onClick={() => {
+                  setMode(mode === "login" ? "signup" : "login");
+                  form.reset();
+                }}
+                className="text-primary font-semibold hover:underline"
+                data-testid="button-toggle-mode"
+              >
+                {mode === "login" ? "Sign up" : "Sign in"}
+              </button>
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

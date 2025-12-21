@@ -10,18 +10,9 @@ const pennEmailSchema = z.string().email().refine(email => {
   message: "Must be a valid Penn email (@upenn.edu, @seas, @sas, or @wharton)",
 });
 
-const signupSchema = z.object({
-  email: pennEmailSchema,
-  password: z.string().min(8, "Password must be at least 8 characters"),
-});
-
-const otpEmailSchema = z.object({
-  email: pennEmailSchema,
-});
-
-const otpVerifySchema = z.object({
-  email: z.string().email(),
-  code: z.string().length(8, "Code must be 8 digits").regex(/^\d+$/, "Code must be numbers only"),
+const authSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters").max(20, "Username must be at most 20 characters"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 const profileUpdateSchema = z.object({
@@ -66,7 +57,7 @@ export async function registerRoutes(
 
   app.post("/api/auth/signup", async (req: Request, res: Response) => {
     try {
-      const result = signupSchema.safeParse(req.body);
+      const result = authSchema.safeParse(req.body);
       
       if (!result.success) {
         return res.status(400).json({ 
@@ -74,13 +65,25 @@ export async function registerRoutes(
         });
       }
 
-      const { email, password } = result.data;
+      const { username, password } = result.data;
 
-      // Use admin client to create user (bypasses any client-side restrictions)
+      // Check if username already exists
+      const { data: existingUser } = await supabaseAdmin
+        .from('profiles')
+        .select('id')
+        .eq('username', username)
+        .single();
+
+      if (existingUser) {
+        return res.status(400).json({ message: "Username already taken" });
+      }
+
+      // Create auth user with email format for Supabase
+      const tempEmail = `${username.toLowerCase()}@penndoubledate.local`;
       const { data, error } = await supabaseAdmin.auth.admin.createUser({
-        email,
+        email: tempEmail,
         password,
-        email_confirm: true, // Auto-confirm email for Penn users
+        email_confirm: true,
       });
 
       if (error) {
@@ -88,45 +91,27 @@ export async function registerRoutes(
       }
 
       if (data.user) {
-        // Create profile using admin client (bypasses RLS)
+        // Create profile with username
         const { error: profileError } = await supabaseAdmin
           .from('profiles')
           .insert({
             id: data.user.id,
-            email: email,
+            username: username,
+            email: tempEmail,
           });
 
         if (profileError) {
           console.error("Profile creation error:", profileError);
-        }
-
-        // Sign in the user to get a session
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (signInError) {
-          // User created but couldn't sign in - they can login manually
-          return res.status(201).json({ 
-            user: data.user,
-            session: null,
-            message: "Account created! Please log in."
-          });
+          return res.status(400).json({ message: "Failed to create profile" });
         }
 
         return res.status(201).json({ 
-          user: data.user,
-          session: signInData.session,
-          message: "Account created and logged in"
+          user: { id: data.user.id, username },
+          message: "Account created successfully"
         });
       }
 
-      res.status(201).json({ 
-        user: data.user,
-        session: null,
-        message: "Account created"
-      });
+      res.status(400).json({ message: "Failed to create account" });
     } catch (error) {
       console.error("Signup error:", error);
       res.status(500).json({ message: "Internal server error" });
@@ -135,116 +120,42 @@ export async function registerRoutes(
 
   app.post("/api/auth/login", async (req: Request, res: Response) => {
     try {
-      const { email, password } = req.body;
+      const result = authSchema.safeParse(req.body);
 
-      if (!email || !password) {
-        return res.status(400).json({ message: "Email and password are required" });
-      }
-
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        return res.status(401).json({ message: error.message });
-      }
-
-      res.json({ 
-        user: data.user,
-        session: data.session 
-      });
-    } catch (error) {
-      console.error("Login error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  // OTP Auth - Send verification code to Penn email
-  app.post("/api/auth/otp/send", async (req: Request, res: Response) => {
-    try {
-      const result = otpEmailSchema.safeParse(req.body);
-      
-      if (!result.success) {
-        return res.status(400).json({ 
-          message: result.error.errors[0]?.message || "Invalid email" 
-        });
-      }
-
-      const { email } = result.data;
-
-      // Use Supabase to send OTP (admin client not needed for this)
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          shouldCreateUser: true,
-        },
-      });
-
-      if (error) {
-        console.error("OTP send error:", error);
-        return res.status(400).json({ message: "Failed to send verification code. Please try again." });
-      }
-
-      res.json({ message: "Verification code sent to your Penn email" });
-    } catch (error) {
-      console.error("OTP send error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  // OTP Auth - Verify code and sign in
-  app.post("/api/auth/otp/verify", async (req: Request, res: Response) => {
-    try {
-      const result = otpVerifySchema.safeParse(req.body);
-      
       if (!result.success) {
         return res.status(400).json({ 
           message: result.error.errors[0]?.message || "Invalid input" 
         });
       }
 
-      const { email, code } = result.data;
+      const { username, password } = result.data;
 
-      // Verify OTP with Supabase
-      const { data, error } = await supabase.auth.verifyOtp({
-        email,
-        token: code,
-        type: "email",
+      // Find user by username
+      const { data: profile, error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .select('id, email')
+        .eq('username', username)
+        .single();
+
+      if (profileError || !profile) {
+        return res.status(401).json({ message: "Invalid username or password" });
+      }
+
+      // Try to login with email
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: profile.email,
+        password,
       });
 
       if (error) {
-        console.error("OTP verify error:", error);
-        return res.status(401).json({ message: "Invalid or expired code. Please try again." });
-      }
-
-      if (!data.user) {
-        return res.status(401).json({ message: "Authentication failed" });
-      }
-
-      // Create profile if it doesn't exist
-      const { data: existingProfile } = await supabaseAdmin
-        .from('profiles')
-        .select('id')
-        .eq('id', data.user.id)
-        .single();
-
-      if (!existingProfile) {
-        await supabaseAdmin
-          .from('profiles')
-          .insert({
-            id: data.user.id,
-            email: data.user.email || email,
-          });
+        return res.status(401).json({ message: "Invalid username or password" });
       }
 
       res.json({ 
-        user: data.user,
-        session: data.session,
-        message: "Logged in successfully"
+        user: { id: data.user.id, username },
       });
     } catch (error) {
-      console.error("OTP verify error:", error);
+      console.error("Login error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
