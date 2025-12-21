@@ -390,7 +390,7 @@ export default function Survey() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-white to-primary/5 flex flex-col items-center py-8 px-4">
-      <div className="w-full max-w-2xl mb-8">
+      <div className="w-full max-w-6xl mb-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${sections[currentSection].color} flex items-center justify-center shadow-lg`}>
@@ -430,7 +430,7 @@ export default function Survey() {
         </div>
       </div>
 
-      <div className="w-full max-w-2xl flex-1">
+      <div className="w-full max-w-6xl flex-1">
         <AnimatePresence mode="wait">
           <motion.div
             key={`${currentSection}-${currentQuestion}`}
@@ -440,7 +440,7 @@ export default function Survey() {
             transition={{ duration: 0.3 }}
             className="h-full flex flex-col"
           >
-            <div className="bg-white p-8 rounded-3xl shadow-xl border border-border/50 mb-6 flex-1">
+            <div className="bg-white p-12 rounded-3xl shadow-xl border border-border/50 mb-6 flex-1">
               {currentQ?.type === "profile" ? (
                 <ProfileSection 
                   answers={answers} 
