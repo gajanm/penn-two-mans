@@ -11,6 +11,9 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 
+// Log immediately when module loads
+console.log("📦 PartnerSelect.tsx module loaded");
+
 interface UserProfile {
   id: string;
   email: string;
@@ -35,6 +38,11 @@ interface InvitesData {
 }
 
 export default function PartnerSelect() {
+  // Force console output - this should ALWAYS show
+  console.log("=".repeat(50));
+  console.log("🎬 PartnerSelect component rendered");
+  console.log("=".repeat(50));
+  
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   const [search, setSearch] = useState("");
@@ -43,38 +51,66 @@ export default function PartnerSelect() {
   const [loading, setLoading] = useState(true);
   const [currentPartner, setCurrentPartner] = useState<UserProfile | null>(null);
   const [activeTab, setActiveTab] = useState("find");
+  const [currentUserGender, setCurrentUserGender] = useState<string | null>(null);
   const { user } = useAuth();
+
+  console.log("👤 PartnerSelect - Current user:", user);
+  console.log("⏳ PartnerSelect - Loading state:", loading);
+  
+  // Also log to window for debugging
+  if (typeof window !== 'undefined') {
+    (window as any).partnerSelectDebug = {
+      user,
+      loading,
+      usersCount: users.length,
+      hasPartner: !!currentPartner
+    };
+  }
 
   const pendingReceivedCount = invites.received.filter(i => i.status === 'pending').length;
 
   function getToken() {
-    return localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+    const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+    console.log("🔑 PartnerSelect - Token exists:", !!token);
+    return token;
   }
 
   async function fetchData() {
-    if (!user) return;
+    if (!user) {
+      console.log("❌ PartnerSelect: No user, skipping fetch");
+      return;
+    }
     
     try {
       const token = await getToken();
       if (!token) {
+        console.log("❌ PartnerSelect: No token, skipping fetch");
         setLoading(false);
         return;
       }
 
+      console.log("📡 PartnerSelect: Fetching partners data...");
+      console.log("👤 Current user:", user);
+      
       const [partnersRes, profileRes, invitesRes] = await Promise.all([
         fetch('/api/partners', { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch('/api/profile', { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch('/api/partner-invites', { headers: { 'Authorization': `Bearer ${token}` } })
       ]);
 
+      console.log("📥 PartnerSelect: Partners response status:", partnersRes.status);
+      console.log("📥 PartnerSelect: Partners response ok:", partnersRes.ok);
+
       let partnersData: UserProfile[] = [];
-      if (partnersRes.ok) {
-        partnersData = await partnersRes.json();
-        setUsers(partnersData || []);
-      }
+      let currentUserGender: string | null = null;
       
+      // Get current user's gender first
       if (profileRes.ok) {
         const profileData = await profileRes.json();
+        currentUserGender = profileData?.gender || null;
+        setCurrentUserGender(currentUserGender); // Store in state for filtering
+        console.log("👤 Current user's gender from profile:", currentUserGender);
+        
         if (profileData?.partner_id) {
           // Fetch partner directly by ID for reliability
           const partnerRes = await fetch(`/api/profile/${profileData.partner_id}`, { 
@@ -85,6 +121,32 @@ export default function PartnerSelect() {
             setCurrentPartner(partnerData);
           }
         }
+      }
+
+      // Process partners response
+      if (partnersRes.ok) {
+        partnersData = await partnersRes.json();
+        console.log("✅ PartnerSelect: Received partners:", partnersData.length);
+        console.log("📋 PartnerSelect: Partner genders:", partnersData.map(p => ({ name: p.full_name || p.email, gender: p.gender })));
+        
+        // Client-side gender filter as backup (server should already filter, but double-check)
+        if (currentUserGender) {
+          const beforeFilter = partnersData.length;
+          partnersData = partnersData.filter(p => {
+            const partnerGender = p.gender?.trim();
+            const matches = partnerGender === currentUserGender.trim();
+            if (!matches) {
+              console.warn(`⚠️ Gender mismatch filtered out: ${p.full_name || p.email} (${partnerGender} vs ${currentUserGender})`);
+            }
+            return matches;
+          });
+          console.log(`🔍 Client-side filter: ${beforeFilter} → ${partnersData.length} partners (removed ${beforeFilter - partnersData.length} with different gender)`);
+        }
+        
+        setUsers(partnersData || []);
+      } else {
+        const errorText = await partnersRes.text();
+        console.error("❌ PartnerSelect: Partners fetch failed:", partnersRes.status, errorText);
       }
 
       if (invitesRes.ok) {
@@ -104,6 +166,7 @@ export default function PartnerSelect() {
   }
 
   useEffect(() => {
+    console.log("🔄 PartnerSelect useEffect triggered, user:", user);
     fetchData();
   }, [user]);
 
@@ -256,15 +319,34 @@ export default function PartnerSelect() {
     return null;
   };
 
+  // Filter users by search AND by same gender (client-side backup filter)
   const filteredUsers = users.filter(u => {
+    // Search filter
     const name = u.full_name || u.email.split('@')[0];
-    return name.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = name.toLowerCase().includes(search.toLowerCase());
+    
+    // Gender filter - only show same gender (backup to server-side filter)
+    let matchesGender = true; // Default to true if we can't determine gender
+    if (currentUserGender && u.gender) {
+      const userGenderTrimmed = String(currentUserGender).trim();
+      const partnerGenderTrimmed = String(u.gender).trim();
+      matchesGender = userGenderTrimmed === partnerGenderTrimmed;
+      
+      if (!matchesGender) {
+        console.warn(`🚫 Filtered out ${u.full_name || u.email}: gender mismatch (${partnerGenderTrimmed} vs ${userGenderTrimmed})`);
+      }
+    }
+    
+    return matchesSearch && matchesGender;
   });
 
   const pendingReceived = invites.received.filter(i => i.status === 'pending');
   const pendingSent = invites.sent.filter(i => i.status === 'pending');
 
+  console.log("🎨 PartnerSelect render - loading:", loading, "users:", users.length, "currentPartner:", !!currentPartner);
+
   if (loading) {
+    console.log("⏳ PartnerSelect: Showing loading state");
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />

@@ -14,14 +14,12 @@ import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 
 const sections = [
-  { id: "about", title: "About You", description: "Let's get to know you", icon: User, color: "from-violet-500 to-purple-500" },
-  { id: "basics", title: "The Basics", description: "Let's start simple", icon: Heart, color: "from-rose-500 to-pink-500" },
-  { id: "vision", title: "Life Vision & Priorities", description: "Where are you headed?", icon: Sparkles, color: "from-amber-500 to-orange-500" },
-  { id: "personality", title: "Your Personality", description: "Who are you really?", icon: Users, color: "from-emerald-500 to-teal-500" },
-  { id: "life", title: "Your Life", description: "How do you spend your time?", icon: Calendar, color: "from-blue-500 to-indigo-500" },
-  { id: "love", title: "How You Love", description: "Your relationship style", icon: Heart, color: "from-purple-500 to-violet-500" },
-  { id: "connection", title: "Staying Connected", description: "Communication matters", icon: MessageCircle, color: "from-cyan-500 to-blue-500" },
-  { id: "dealbreakers", title: "The Non-Negotiables", description: "What's off the table?", icon: Zap, color: "from-rose-500 to-red-500" },
+  { id: "about", title: "About You", description: "Basic info", icon: User, color: "from-violet-500 to-purple-500" },
+  { id: "basics", title: "The Basics", description: "What you're looking for", icon: Heart, color: "from-rose-500 to-pink-500" },
+  { id: "personality", title: "Personality & Energy", description: "Vibe check", icon: Users, color: "from-emerald-500 to-teal-500" },
+  { id: "life", title: "Lifestyle", description: "How you live & go out", icon: Calendar, color: "from-blue-500 to-indigo-500" },
+  { id: "connection", title: "Connection", description: "How you interact", icon: MessageCircle, color: "from-cyan-500 to-blue-500" },
+  { id: "dealbreakers", title: "Dealbreakers", description: "Hard filters", icon: Zap, color: "from-rose-500 to-red-500" },
 ];
 
 const majors = [
@@ -46,10 +44,10 @@ const majors = [
   "Statistics and Data Science", "Theatre Arts", "Urban Studies", "Visual Studies"
 ];
 
-const graduationYears = ["2025", "2026", "2027", "2028", "2029"];
+const graduationYears = ["2026", "2027", "2028", "2029"];
 
 type SurveyData = {
-  [key: string]: string | string[] | number | number[];
+  [key: string]: string | string[] | number | number[] | boolean;
 };
 
 function formatHeight(inches: number): string {
@@ -218,10 +216,11 @@ export default function Survey() {
 
         if (response.ok) {
           const profile = await response.json();
-          if (profile?.survey_completed) {
-            setLocation("/dashboard");
-            return;
-          }
+      // If survey is already completed, redirect to dashboard
+      if (profile?.survey_completed) {
+        setLocation("/dashboard");
+        return;
+      }
         }
       } catch (error) {
         console.error('Error checking profile:', error);
@@ -308,7 +307,37 @@ export default function Survey() {
         partner_height_max: answers.partnerHeightMax as number,
       };
 
-      const surveyAnswers = { ...answers };
+      // Filter to only include valid survey questions (exclude profile fields)
+      const validQuestionIds = new Set([
+        "q1_looking_for",
+        "q2_who_to_meet",
+        "q_race_ethnicity",
+        "q_preferred_race_ethnicity",
+        "q_religious_affiliation",
+        "q_preferred_religious_affiliation",
+        "q3_friday_night",
+        "q4_humor",
+        "q5_argument",
+        "q6_social_battery",
+        "q7_hobbies",
+        "q8_going_out",
+        "q9_alcohol",
+        "q10_partner_alcohol",
+        "q11_texting",
+        "q12_friend_groups",
+        "q13_dealbreakers"
+      ]);
+      
+      const surveyAnswers: Record<string, any> = {};
+      
+      // Only include answers for valid question IDs
+      Object.keys(answers).forEach(key => {
+        if (validQuestionIds.has(key)) {
+          surveyAnswers[key] = answers[key];
+        }
+      });
+      
+      // Explicitly remove profile fields (these go to profileData, not surveyAnswers)
       delete surveyAnswers.fullName;
       delete surveyAnswers.gender;
       delete surveyAnswers.interestedIn;
@@ -713,8 +742,24 @@ function ProfileSection({
           <div className="flex justify-between items-center">
             <Label className="text-sm font-semibold">Partner Height Preference</Label>
             <span className="text-lg font-bold text-primary">
-              {formatHeight(answers.partnerHeightMin as number)} - {formatHeight(answers.partnerHeightMax as number)}
+              {(answers.noHeightPreference as boolean) 
+                ? "No preference" 
+                : `${formatHeight(answers.partnerHeightMin as number)} - ${formatHeight(answers.partnerHeightMax as number)}`
+              }
             </span>
+          </div>
+          <div className="flex items-center space-x-2 mb-2">
+            <Checkbox
+              id="no-height-preference"
+              checked={(answers.noHeightPreference as boolean) || false}
+              onCheckedChange={(checked) => setAnswers({ 
+                ...answers, 
+                noHeightPreference: checked as boolean
+              })}
+            />
+            <Label htmlFor="no-height-preference" className="text-sm cursor-pointer">
+              No preference
+            </Label>
           </div>
           <Slider
             value={[answers.partnerHeightMin as number, answers.partnerHeightMax as number]}
@@ -727,6 +772,7 @@ function ProfileSection({
             max={84}
             step={1}
             className="py-4"
+            disabled={(answers.noHeightPreference as boolean) || false}
           />
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>4'10"</span>
@@ -745,10 +791,11 @@ type Question = {
   options: string[];
   maxSelect?: number;
 };
-
 function getQuestionsForSection(sectionIndex: number): Question[] {
   switch (sectionIndex) {
-    case 0: // ABOUT YOU (Profile section)
+
+    // ABOUT YOU
+    case 0:
       return [
         {
           id: "profile",
@@ -758,19 +805,20 @@ function getQuestionsForSection(sectionIndex: number): Question[] {
         }
       ];
 
-    case 1: // THE BASICS (3 questions)
+    // THE BASICS — INTENT & AGE FLEXIBILITY
+    case 1:
       return [
         {
           id: "q1_looking_for",
           question: "What are you looking for?",
           type: "single",
           options: [
-            "My person - the real deal",
-            "A genuine relationship - something meaningful",
-            "Something serious, but I'm not in a rush",
-            "Keeping it casual but open to more",
+            "Just seeing where things go",
             "Just having fun for now",
-            "Honestly? Just seeing where things go"
+            "Keeping it casual but open to more",
+            "Something serious, but not in a rush",
+            "A genuine relationship",
+            "My person — the real deal"
           ]
         },
         {
@@ -778,412 +826,258 @@ function getQuestionsForSection(sectionIndex: number): Question[] {
           question: "I want to meet:",
           type: "single",
           options: [
-            "Anyone at Penn - age is just a number",
-            "People within 2 years of me - similar life phase vibes",
-            "People within 1 year of me - we're on the same timeline",
-            "Only people in my year - we get it"
+            "Only people in my year",
+            "People within 1 year of me",
+            "People within 2 years of me",
+            "Anyone at Penn — age is just a number"
           ]
         },
         {
-          id: "q3_dtr",
-          question: "When it comes to defining the relationship:",
-          type: "single",
-          options: [
-            "Slow burn - let's build a friendship first",
-            "Let it happen naturally - no pressure",
-            "Traditional route - exclusive after a few dates",
-            "When you know, you know - I don't waste time",
-            "Every connection is different"
-          ]
-        }
-      ];
-
-    case 2: // LIFE VISION & PRIORITIES (3 questions)
-      return [
-        {
-          id: "q4_five_years",
-          question: "Picture yourself in 5 years. Where are you?",
-          type: "single",
-          options: [
-            "Killing it in my career in a major city",
-            "Deep in grad school or advanced training",
-            "Exploring the world before I settle",
-            "Actually settled - home, maybe starting a family",
-            "Building something of my own - startup, art, passion project",
-            "Wherever life takes me - I'm adaptable"
-          ]
-        },
-        {
-          id: "q5_kids",
-          question: "The whole kids question:",
-          type: "single",
-          options: [
-            "Yes, definitely - I want a few",
-            "Probably - one or two sounds right",
-            "If my partner wants them, I'm open",
-            "Way too soon to decide",
-            "Leaning toward no",
-            "Hard no - not for me",
-            "Adoption or fostering feels more my speed"
-          ]
-        },
-        {
-          id: "q6_values",
-          question: "What actually matters to you?",
+          id: "q_race_ethnicity",
+          question: "Race / Ethnicity:",
           type: "multi",
-          maxSelect: 3,
+          maxSelect: 10,
           options: [
-            "Family and the people closest to me",
-            "Crushing my career goals",
-            "Constantly growing and evolving as a person",
-            "Adventures and making memories",
-            "Financial stability and security",
-            "Actually making a difference in the world",
-            "Creative expression and authenticity",
-            "Learning and intellectual stimulation",
-            "Health and taking care of myself",
-            "My community and friendships"
+            "African",
+            "Asian (East)",
+            "Asian (South)",
+            "Asian (Southeast)",
+            "Black / African American",
+            "Hispanic / Latinx",
+            "Middle Eastern / North African",
+            "Native American / Alaskan Native",
+            "Native Hawaiian / Pacific Islander",
+            "White"
+          ]
+        },
+        {
+          id: "q_preferred_race_ethnicity",
+          question: "I would prefer if my match was of one of the following ethnicities:",
+          type: "multi",
+          maxSelect: 11,
+          options: [
+            "No preference",
+            "African",
+            "Asian (East)",
+            "Asian (South)",
+            "Asian (Southeast)",
+            "Black / African American",
+            "Hispanic / Latinx",
+            "Middle Eastern / North African",
+            "Native American / Alaskan Native",
+            "Native Hawaiian / Pacific Islander",
+            "White"
+          ]
+        },
+        {
+          id: "q_religious_affiliation",
+          question: "My religious affiliation:",
+          type: "multi",
+          maxSelect: 12,
+          options: [
+            "Agnostic",
+            "Atheist",
+            "Buddhist",
+            "Catholic",
+            "Hindu",
+            "Jewish",
+            "Mormon",
+            "Muslim",
+            "Protestant",
+            "Spiritual but not religious",
+            "Christian (Other)",
+            "Other"
+          ]
+        },
+        {
+          id: "q_preferred_religious_affiliation",
+          question: "I would prefer if my match was of one of the following religions:",
+          type: "multi",
+          maxSelect: 13,
+          options: [
+            "No preference",
+            "Agnostic",
+            "Atheist",
+            "Buddhist",
+            "Catholic",
+            "Hindu",
+            "Jewish",
+            "Mormon",
+            "Muslim",
+            "Protestant",
+            "Spiritual but not religious",
+            "Christian (Other)",
+            "Other"
           ]
         }
       ];
 
-    case 3: // YOUR PERSONALITY (6 questions)
+    // PERSONALITY & ENERGY — SOCIAL VIBE
+    case 2:
       return [
         {
-          id: "q7_friday_night",
+          id: "q3_friday_night",
           question: "It's Friday night. Where am I?",
           type: "single",
           options: [
-            "Somewhere with a crowd - party, bar, living it up",
-            "Good food and conversation with my people",
-            "Something random - concert, new restaurant, spontaneous plan",
-            "Low-key vibes - movie or game night",
-            "Hopefully on a date",
-            "In my zone - personal project time",
-            "Getting a workout in or playing sports",
-            "Literally anywhere - I go with the flow"
+            "Low-key in my dorm or chilling quietly alone",
+            "Studying in a GSR at Huntsman",
+            "Hanging with a small group of friends",
+            "Good food and conversation",
+            "Something spontaneous or random",
+            "Out with a crowd — party or bar",
+            "Literally anywhere — go with the flow"
           ]
         },
         {
-          id: "q8_decisions",
-          question: "Big decision time. What's your move?",
-          type: "single",
-          options: [
-            "Gut feeling all the way",
-            "Let me think this through logically",
-            "Group chat consultation required",
-            "Time for a pros and cons list",
-            "Whatever feels right right now",
-            "Head and heart - I need both"
-          ]
-        },
-        {
-          id: "q9_rough_day",
-          question: "You're having a really rough day. What do you need from someone you're dating?",
-          type: "single",
-          options: [
-            "Tell me what to do - I need solutions",
-            "Just listen and validate what I'm feeling",
-            "Get my mind off it - let's do something fun",
-            "Give me space, but be ready when I'm ready to talk",
-            "Actually help me fix the problem",
-            "Let me be mad and be mad with me",
-            "Just ask - I'll tell you what I need"
-          ]
-        },
-        {
-          id: "q10_humor",
+          id: "q4_humor",
           question: "Your humor style is:",
           type: "single",
           options: [
-            "Sharp and sarcastic - I'm basically a comedy writer",
-            "Unserious and ridiculous - can't take me anywhere",
-            "Dry delivery - subtlety is an art",
-            "Dark - nothing is off limits",
-            "Roasting people I love is my love language",
-            "Aggressively wholesome - yes, I make dad jokes",
-            "I find the funny in everyday chaos",
-            "Silly and physical - I'll do anything for a laugh"
+            "Dry and subtle",
+            "Sharp and sarcastic",
+            "Dark",
+            "Finding humor in everyday chaos",
+            "Unserious and ridiculous",
+            "Silly and physical",
+            "Aggressively wholesome"
           ]
         },
         {
-          id: "q11_argument",
+          id: "q5_argument",
           question: "Mid-argument with someone you care about:",
           type: "single",
           options: [
-            "I'm passionate and I'm making my case",
-            "Let's figure this out together right now",
-            "I need 20 minutes to not say something I'll regret",
-            "I'm probably crying but we'll work it out",
-            "Can we not fight? This is uncomfortable",
-            "Help me see your side - I want to understand",
-            "Joke about it? Please?"
+            "I avoid conflict if possible",
+            "I need space to cool off first",
+            "I try to understand their side",
+            "Let's talk it through calmly",
+            "I'm emotional but communicative",
+            "I'm passionate and make my case",
+            "I joke to diffuse tension"
           ]
         },
         {
-          id: "q12_social_battery",
+          id: "q6_social_battery",
           question: "Social battery check:",
           type: "single",
           options: [
-            "Extreme introvert - people are exhausting",
-            "Introvert-leaning - small groups are my limit",
-            "Right in the middle - depends on the day",
-            "Extrovert-leaning - I like being around people",
-            "Extreme extrovert - alone time makes me sad"
+            "Extreme introvert",
+            "Introvert-leaning",
+            "Right in the middle",
+            "Extrovert-leaning",
+            "Extreme extrovert"
           ]
         }
       ];
 
-    case 4: // YOUR LIFE (9 questions - with drinking and weed partner preferences)
+    // LIFESTYLE — ACTIVITY & GOING OUT
+    case 3:
       return [
         {
-          id: "q13_hobbies",
+          id: "q7_hobbies",
           question: "Things I actually do with my time:",
           type: "multi",
           maxSelect: 5,
           options: [
-            "Play sports - I'm competitive",
+            "Binge-watching / relaxing",
+            "Wellness & mindfulness",
+            "Gaming",
+            "Research / learning deeply",
+            "Make things (art, music, writing)",
+            "Outdoor adventures",
+            "Play sports",
             "Live at the gym",
-            "Outdoor adventures - hiking, camping, nature stuff",
-            "Make things - art, music, writing, photos",
-            "Perform - theater, dance, any stage really",
-            "Game hard - video games, board games, all of it",
-            "Always reading something",
-            "Foodie life - cooking or trying restaurants",
-            "Watch sports religiously",
-            "Out at night - clubs, parties, the scene",
-            "Greek life is my whole thing",
-            "Research nerd - I love going deep on topics",
-            "Fashion matters to me",
+            "Foodie life",
             "Travel whenever possible",
-            "Binge-watching is valid self-care",
-            "Wellness and mindfulness stuff"
+            "Out at night",
+            "Greek life",
+            "Perform (theater, dance)"
           ]
         },
         {
-          id: "q14_new_experiences",
-          question: "Someone suggests something you've never done before:",
+          id: "q8_going_out",
+          question: "How often do you go out?",
           type: "single",
           options: [
-            "Say less - I'm immediately in",
-            "I love new experiences - count me in",
-            "If my friends are going, I'm down",
-            "Maybe if it sounds fun and safe",
-            "I like what I like - probably not",
-            "I need advance notice and a full itinerary"
+            "Never",
+            "Rarely",
+            "Occasionally",
+            "Some weekends",
+            "Most weekends",
+            "Multiple times a week"
           ]
         },
         {
-          id: "q15_going_out",
-          question: "How often do you go out (parties, bars, clubs)?",
-          type: "single",
-          options: [
-            "Multiple times a week - it's a big part of my life",
-            "Most weekends - Thursday through Saturday",
-            "Some weekends - maybe twice a month",
-            "Occasionally - once a month or for special events",
-            "Rarely - a few times a semester",
-            "Never - not my scene at all"
-          ]
-        },
-        {
-          id: "q16_alcohol",
+          id: "q9_alcohol",
           question: "Your relationship with alcohol:",
           type: "single",
           options: [
-            "I don't drink at all",
-            "Very rarely - maybe a few times a year",
-            "Occasionally - special occasions and events",
-            "Socially - most weekends when I go out",
-            "Regularly - it's part of my social life",
-            "Still figuring out my limits and preferences"
+            "I don't drink",
+            "Very rarely",
+            "Occasionally",
+            "Socially",
+            "Regularly"
           ]
         },
         {
-          id: "q17_partner_alcohol",
+          id: "q10_partner_alcohol",
           question: "How do you feel about a partner who drinks?",
           type: "single",
           options: [
-            "They shouldn't drink at all - dealbreaker for me",
-            "Rarely is fine - special occasions only",
-            "Occasionally is okay - not too often",
-            "Socially is totally fine - most weekends",
-            "However much they want - doesn't bother me",
-            "As long as it's responsible, I don't care"
-          ]
-        },
-        {
-          id: "q18_weed",
-          question: "Your relationship with weed:",
-          type: "single",
-          options: [
-            "I don't smoke and prefer not to be around it",
-            "I don't smoke but don't mind if others do",
-            "Occasionally - like a few times a semester",
-            "Socially - when I'm out with friends",
-            "Regularly - it's part of my routine",
-            "Daily or near-daily",
-            "Not my thing but totally fine with it"
-          ]
-        },
-        {
-          id: "q19_partner_weed",
-          question: "How do you feel about a partner who smokes weed?",
-          type: "single",
-          options: [
-            "They shouldn't smoke at all - dealbreaker",
-            "Very occasionally is okay - rarely",
-            "Socially is fine - when out with friends",
-            "Regularly is fine - doesn't bother me",
-            "However much they want - their choice",
-            "Prefer they don't but not a dealbreaker"
-          ]
-        },
-        {
-          id: "q20_mess",
-          question: "The mess tolerance question:",
-          type: "single",
-          options: [
-            "Everything has a place and it better be there",
-            "I'm pretty clean - it matters to me",
-            "Organized enough - I know where things are",
-            "I clean when it gets bad",
-            "Mess doesn't bother me at all"
-          ]
-        },
-        {
-          id: "q21_morning_night",
-          question: "Morning person or night owl?",
-          type: "single",
-          options: [
-            "Up early crushing it",
-            "Morning-ish but flexible",
-            "Whatever works - I adapt",
-            "Better at night but I can do mornings",
-            "100% night owl - don't talk to me before 10am"
+            "Dealbreaker",
+            "Only rarely",
+            "Occasionally is fine",
+            "Socially is fine",
+            "Doesn't bother me at all"
           ]
         }
       ];
 
-    case 5: // HOW YOU LOVE (5 questions)
+    // CONNECTION — COMMUNICATION & SOCIAL MERGING
+    case 4:
       return [
         {
-          id: "q22_show_interest",
-          question: "The way you show someone you're into them:",
-          type: "single",
-          options: [
-            "Touch - I'm naturally physically affectionate",
-            "Time - giving you my full attention",
-            "Words - I'll tell you how I feel",
-            "Actions - doing things to make your life easier",
-            "Small thoughtful things that show I remember",
-            "Experiences - making memories together",
-            "Hyping you up and supporting your dreams"
-          ]
-        },
-        {
-          id: "q23_dynamic",
-          question: "Your ideal relationship dynamic:",
-          type: "single",
-          options: [
-            "Pretty much joined at the hip",
-            "Mostly together, some independence",
-            "50/50 - balance is key",
-            "Mostly separate lives that overlap nicely",
-            "Very independent with intentional quality time",
-            "Depends on the phase we're in"
-          ]
-        },
-        {
-          id: "q24_emotional",
-          question: "Opening up emotionally:",
-          type: "single",
-          options: [
-            "I'm an open book from day one",
-            "Slow to trust, but then all in",
-            "Gradual - I share as I get comfortable",
-            "I keep some walls up",
-            "I want to open up but it's hard for me",
-            "Pretty private with feelings"
-          ]
-        },
-        {
-          id: "q25_privacy",
-          question: "The privacy talk:",
-          type: "single",
-          options: [
-            "Full transparency - passwords and all",
-            "Pretty open but we're still individuals",
-            "Open communication, personal boundaries respected",
-            "Tell me the important stuff, live your life",
-            "I need a lot of personal space"
-          ]
-        },
-        {
-          id: "q26_physical",
-          question: "Physical affection in a relationship:",
-          type: "single",
-          options: [
-            "Constant - I'm very touchy",
-            "Regular - it's important to me",
-            "Moderate - balanced with everything else",
-            "Occasional - I like it but don't need it all the time",
-            "Not my main thing - other stuff matters more"
-          ]
-        }
-      ];
-
-    case 6: // STAYING CONNECTED (2 questions)
-      return [
-        {
-          id: "q27_texting",
+          id: "q11_texting",
           question: "Your texting personality:",
           type: "single",
           options: [
-            "Constant stream of consciousness all day",
-            "Frequent - good morning/goodnight type",
-            "Daily convos when there's something to say",
-            "When something actually matters",
-            "Honestly not a big texter - rather see you",
-            "Pretty independent - we'll link when we link"
+            "Only when something matters",
+            "Not a big texter",
+            "Daily when there's something to say",
+            "Frequent check-ins",
+            "Constant all day"
           ]
         },
         {
-          id: "q28_friend_groups",
+          id: "q12_friend_groups",
           question: "Friend groups and relationships:",
           type: "single",
           options: [
-            "All my friends are your friends and vice versa",
-            "I want everyone to get along and hang out",
-            "Separate squads that sometimes overlap",
             "Totally separate is fine",
-            "You need to vibe with my core group though",
-            "We should each keep our own friendships"
+            "Separate squads that overlap sometimes",
+            "We keep our own friendships",
+            "Everyone should get along",
+            "All my friends are your friends"
           ]
         }
       ];
 
-    case 7: // THE NON-NEGOTIABLES (1 question)
+    // DEALBREAKERS — IMMEDIATE BLOCKERS ONLY
+    case 5:
       return [
         {
-          id: "q29_dealbreakers",
+          id: "q13_dealbreakers",
           question: "Absolute deal-breakers:",
           type: "multi",
-          maxSelect: 5,
+          maxSelect: 2,
           options: [
-            "Different views on having kids",
             "Very different relationship with substances",
-            "No ambition or drive",
-            "All work, no balance",
             "Shuts down instead of communicating",
             "Rude to my friends or family",
-            "Extreme introvert/extrovert clash",
-            "Completely different money values",
-            "Won't explore Philly with me",
-            "Can't be emotionally open",
-            "Different views on exclusivity/monogamy",
+            "Extreme introvert/extrovert mismatch",
             "Zero shared interests",
-            "None - I'm pretty open-minded"
+            "None — I'm pretty open-minded"
           ]
         }
       ];

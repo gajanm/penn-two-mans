@@ -1,5 +1,6 @@
 import { Switch, Route, useLocation } from "wouter";
-import { queryClient } from "./lib/queryClient";
+import { queryClient, setAuthErrorHandler } from "./lib/queryClient";
+import { setAuthErrorHandler as setApiAuthErrorHandler } from "./lib/api";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,7 +17,7 @@ import Settings from "@/pages/Settings";
 import { AnimatePresence } from "framer-motion";
 import React from "react";
 import Layout from "./components/Layout";
-import { AuthProvider } from "./contexts/AuthContext";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 function Router() {
@@ -71,14 +72,28 @@ function Router() {
   );
 }
 
+function AppContent() {
+  const { handleAuthError } = useAuth();
+  
+  React.useEffect(() => {
+    // Set up global auth error handlers for both queryClient and api utilities
+    setAuthErrorHandler(handleAuthError);
+    setApiAuthErrorHandler(handleAuthError);
+  }, [handleAuthError]);
+
+  return (
+    <TooltipProvider>
+      <Toaster />
+      <Router />
+    </TooltipProvider>
+  );
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
+        <AppContent />
       </AuthProvider>
     </QueryClientProvider>
   );

@@ -52,7 +52,22 @@ export default function Auth() {
       // Only redirect if we have a valid token
       const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
       if (token) {
-        setLocation("/survey");
+        // Check if survey is completed before redirecting
+        fetch('/api/profile', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+          .then(res => res.ok ? res.json() : null)
+          .then(profile => {
+            if (profile?.survey_completed) {
+              setLocation("/dashboard");
+            } else {
+              setLocation("/survey");
+            }
+          })
+          .catch(() => {
+            // If check fails, default to survey
+            setLocation("/survey");
+          });
       }
     }
   }, [user, loading, setLocation]);
@@ -80,8 +95,14 @@ export default function Auth() {
       }
 
       // Store user and token in context and localStorage
-      setUser({ id: data.user.id, email: values.email });
-      localStorage.setItem('user', JSON.stringify({ id: data.user.id, email: values.email }));
+      const userData = { id: data.user.id, email: values.email };
+      setUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
+      
+      // Log current user
+      console.log("🔐 Current logged in user:", userData);
+      console.log("📧 Email:", values.email);
+      console.log("🆔 User ID:", data.user.id);
       
       // Store session token
       if (data.session) {
@@ -94,6 +115,29 @@ export default function Auth() {
         description: mode === "login" ? "You've been logged in successfully." : "Let's get you set up!",
       });
 
+      // Check if survey is already completed
+      try {
+        const token = data.session?.access_token || localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+        if (token) {
+          const profileRes = await fetch('/api/profile', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          
+          if (profileRes.ok) {
+            const profile = await profileRes.json();
+            if (profile.survey_completed) {
+              // Survey already completed, go to dashboard
+              setLocation("/dashboard");
+              return;
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error checking survey status:", error);
+        // If check fails, still redirect to survey (safer default)
+      }
+
+      // Survey not completed, go to survey
       setLocation("/survey");
     } catch (error) {
       toast({

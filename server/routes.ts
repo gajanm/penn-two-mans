@@ -28,25 +28,41 @@ const profileUpdateSchema = z.object({
   partner_id: z.string().uuid().optional(),
 });
 
-async function authenticateToken(req: Request, res: Response, next: NextFunction) {
+async function authenticateToken(req: Request, res: Response, next: NextFunction): Promise<void> {
+  console.log(`🔐 authenticateToken called for: ${req.method} ${req.path}`);
   const authHeader = req.headers.authorization;
   const token = authHeader?.split(' ')[1];
 
   if (!token) {
-    return res.status(401).json({ message: "No token provided" });
+    console.log("❌ No token provided");
+    res.status(401).json({ message: "No token provided" });
+    return;
   }
 
   try {
+    // Use the regular supabase client to verify the token
+    // In Supabase JS v2, getUser() accepts a token parameter
     const { data: { user }, error } = await supabase.auth.getUser(token);
     
-    if (error || !user) {
-      return res.status(401).json({ message: "Invalid token" });
+    if (error) {
+      console.error("❌ Token verification error:", error.message);
+      res.status(401).json({ message: "Invalid token" });
+      return;
     }
 
+    if (!user) {
+      console.log("❌ User not found after token verification");
+      res.status(401).json({ message: "User not found" });
+      return;
+    }
+
+    console.log(`✅ Token verified for user: ${user.id} (${user.email})`);
     (req as any).user = user;
     next();
   } catch (error) {
-    return res.status(401).json({ message: "Token verification failed" });
+    console.error("💥 Token verification exception:", error);
+    res.status(401).json({ message: "Token verification failed" });
+    return;
   }
 }
 
@@ -225,23 +241,86 @@ export async function registerRoutes(
   });
   
   app.get("/api/partners", authenticateToken, async (req: Request, res: Response) => {
+    console.log("🚀 /api/partners endpoint called");
     try {
       const user = (req as any).user;
+      console.log("👤 Authenticated user:", { id: user.id, email: user.email });
       
-      const { data: partners, error } = await supabaseAdmin
+      // First, get the current user's profile to check their gender
+      console.log("📥 Fetching current user profile...");
+      const { data: currentProfile, error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .select('gender')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError) {
+        console.error("❌ Error fetching current user profile:", profileError);
+        console.error("Profile error details:", JSON.stringify(profileError, null, 2));
+        return res.status(400).json({ message: "Failed to fetch user profile" });
+      }
+
+      if (!currentProfile) {
+        console.error("❌ No profile found for user:", user.id);
+        return res.status(400).json({ message: "Failed to fetch user profile" });
+      }
+
+      console.log("✅ Current user profile fetched:", currentProfile);
+      console.log("🔍 Current user gender:", currentProfile.gender);
+      console.log("👤 Current user ID:", user.id);
+
+      // Build query - start with base filters
+      console.log("🔨 Building query...");
+      let query = supabaseAdmin
         .from('profiles')
         .select('id, email, full_name, major, graduation_year, gender')
         .eq('survey_completed', true)
         .neq('id', user.id);
 
+      // Filter by same gender if user has a gender set
+      // Gender values in DB are: "Male", "Female", "Nonbinary"
+      if (currentProfile.gender) {
+        const userGender = String(currentProfile.gender).trim();
+        console.log("🎯 Filtering partners by gender:", userGender);
+        console.log("🔍 Gender type:", typeof userGender);
+        console.log("🔍 Gender value (JSON):", JSON.stringify(userGender));
+        console.log("🔍 Gender length:", userGender.length);
+        console.log("🔍 Gender char codes:", Array.from(userGender).map(c => c.charCodeAt(0)));
+        
+        // Use exact match - gender values are "Male", "Female", "Nonbinary"
+        query = query.eq('gender', userGender);
+        console.log("✅ Applied gender filter to query");
+      } else {
+        console.log("⚠️ User has no gender set, returning all partners");
+      }
+
+      console.log("📤 Executing query...");
+      const { data: partners, error } = await query;
+
       if (error) {
-        console.error("Partners fetch error:", error);
+        console.error("❌ Partners fetch error:", error);
+        console.error("Error details:", JSON.stringify(error, null, 2));
         return res.status(400).json({ message: error.message });
+      }
+
+      console.log(`✅ Found ${partners?.length || 0} partners`);
+      if (partners && partners.length > 0) {
+        console.log("📋 Partner details:");
+        const userGender = currentProfile.gender ? String(currentProfile.gender).trim() : null;
+        partners.forEach((p, idx) => {
+          const partnerGender = p.gender ? String(p.gender).trim() : null;
+          const genderMatch = userGender && partnerGender ? partnerGender === userGender : 'N/A';
+          const matchIcon = genderMatch === true ? '✅' : genderMatch === false ? '❌' : '⚠️';
+          console.log(`  ${idx + 1}. ${matchIcon} ID: ${p.id}, Gender: "${partnerGender}" (user: "${userGender}"), Name: ${p.full_name || p.email}`);
+        });
+      } else {
+        console.log("⚠️ No partners found");
       }
 
       res.json(partners || []);
     } catch (error) {
-      console.error("Partners error:", error);
+      console.error("💥 Partners endpoint exception:", error);
+      console.error("Exception stack:", error instanceof Error ? error.stack : 'No stack trace');
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -639,6 +718,10 @@ export async function registerRoutes(
       res.status(500).json({ message: "Internal server error" });
     }
   });
+
+  // Register matching routes
+  const { registerMatchingRoutes } = await import("./matching-routes");
+  registerMatchingRoutes(app, authenticateToken);
 
   return httpServer;
 }
