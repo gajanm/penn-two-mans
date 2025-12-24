@@ -474,17 +474,22 @@ function haveBeenMatchedBefore(
 /**
  * Parse year window from q2_who_to_meet preference
  * Returns the maximum allowed year difference
+ * 
+ * Adds leniency: each preference gets +1 year window
+ * - "Only people in my year" → ±1 year window
+ * - "People within 1 year of me" → ±2 year window
+ * - "People within 2 years of me" → ±3 year window
  */
 function parseYearWindow(preference: string | undefined): number {
   if (!preference) return Infinity; // No preference = no restriction
   
   switch (preference) {
     case "Only people in my year":
-      return 0;
+      return 1; // Leniency: allow ±1 year window
     case "People within 1 year of me":
-      return 1;
+      return 2; // Leniency: allow ±2 year window
     case "People within 2 years of me":
-      return 2;
+      return 3; // Leniency: allow ±3 year window
     case "Anyone at Penn — age is just a number":
       return Infinity;
     default:

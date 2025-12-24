@@ -12,7 +12,7 @@ export default function Landing() {
       <nav className="absolute top-0 left-0 right-0 z-50 px-6 py-6 flex justify-between items-center max-w-7xl mx-auto">
         <div className="flex items-center gap-2">
           <Heart className="w-6 h-6 text-white fill-white" />
-          <span className="font-heading font-bold text-xl text-white tracking-tight">Penn Double Date</span>
+          <span className="font-heading font-bold text-xl text-white tracking-tight">Penn Double It</span>
         </div>
         <Link href="/auth">
           <Button variant="secondary" className="bg-white/20 hover:bg-white/30 text-white backdrop-blur-md border-none rounded-full px-6">

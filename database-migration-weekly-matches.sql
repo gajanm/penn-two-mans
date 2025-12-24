@@ -70,3 +70,4 @@ COMMENT ON COLUMN weekly_matches.match_week IS 'Tuesday start date of the match 
 COMMENT ON COLUMN weekly_matches.compatibility_score IS 'Compatibility score from 0-100';
 COMMENT ON COLUMN weekly_matches.match_reasons IS 'Array of reasons why these duos matched';
 
+

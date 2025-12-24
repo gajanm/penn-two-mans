@@ -11,12 +11,12 @@ async function resetTestData() {
   console.log("🗑️  RESETTING TEST DATA");
   console.log("=".repeat(60));
 
-  // Find all test users
+  // Find all test users (both @penn.edu and @upenn.edu)
   console.log("\n🔍 Finding test users...");
   const { data: testProfiles, error: findError } = await supabaseAdmin
     .from('profiles')
     .select('id, email')
-    .or('email.ilike.test.men%@penn.edu,email.ilike.test.women%@penn.edu');
+    .or('email.ilike.test.men%@penn.edu,email.ilike.test.women%@penn.edu,email.ilike.test.men%@upenn.edu,email.ilike.test.women%@upenn.edu');
 
   if (findError) {
     console.error("❌ Error finding test users:", findError);

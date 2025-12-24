@@ -54,7 +54,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <header className="hidden md:flex items-center justify-between px-8 py-4 bg-white/80 backdrop-blur-md border-b border-border sticky top-0 z-50">
         <div className="flex items-center gap-2">
           <Heart className="w-6 h-6 text-primary fill-primary" />
-          <span className="font-heading font-bold text-xl tracking-tight text-foreground">Penn Double Date</span>
+          <span className="font-heading font-bold text-xl tracking-tight text-foreground">Penn Double It</span>
         </div>
         <nav className="flex items-center gap-6">
           {navItems.map((item) => (

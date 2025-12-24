@@ -53,3 +53,4 @@ SELECT
 
 -- Expected result: All counts should be 0
 
+

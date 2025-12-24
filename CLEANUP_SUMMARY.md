@@ -100,3 +100,4 @@ If you want to further clean up, consider:
 2. Review `ARCHITECTURE.md` and update references to removed files
 3. Consider removing `replit.md` if not needed (contains outdated migration notes)
 
+

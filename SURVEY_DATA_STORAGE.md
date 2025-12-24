@@ -426,3 +426,4 @@ Based on the code, the survey includes these sections:
 
 The exact structure of `answers` JSONB depends on what questions are in each section, but it's designed to be flexible and accommodate changes.
 
+

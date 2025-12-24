@@ -496,3 +496,4 @@ const { data } = await supabaseAdmin
 
 6. **Foreign keys** - Relationships are enforced at the database level (profiles → partner_invites, profiles → survey_responses, etc.)
 
+

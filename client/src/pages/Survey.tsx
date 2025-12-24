@@ -7,7 +7,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { ArrowRight, ArrowLeft, Heart, Sparkles, Users, Calendar, MessageCircle, Zap, Check, User, Search, Loader2 } from "lucide-react";
+import { ArrowRight, ArrowLeft, Heart, Sparkles, Users, Calendar, MessageCircle, Zap, Check, User, Search, Loader2, LogOut } from "lucide-react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -184,7 +184,7 @@ export default function Survey() {
   const [, setLocation] = useLocation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkingProfile, setCheckingProfile] = useState(true);
-  const { user, loading } = useAuth();
+  const { user, loading, signOut } = useAuth();
   const { toast } = useToast();
   const [answers, setAnswers] = useState<SurveyData>({
     height: 66,
@@ -415,6 +415,23 @@ export default function Survey() {
   const isLastQuestion = currentSection === sections.length - 1 && currentQuestion === questions.length - 1;
   const SectionIcon = sections[currentSection].icon;
 
+  const handleBackToLogin = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Signed out",
+        description: "You've been signed out. You can sign in again anytime.",
+      });
+      setLocation("/auth");
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to sign out. Please try again.",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-white to-primary/5 flex flex-col items-center py-8 px-4">
       <div className="w-full max-w-2xl mb-8">
@@ -428,9 +445,20 @@ export default function Survey() {
               <p className="text-sm text-muted-foreground">{sections[currentSection].description}</p>
             </div>
           </div>
-          <div className="text-right">
-            <span className="text-2xl font-bold text-primary">{Math.round(progress)}%</span>
-            <p className="text-xs text-muted-foreground">Complete</p>
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              onClick={handleBackToLogin}
+              className="text-muted-foreground hover:text-foreground flex items-center gap-2"
+              title="Back to Login"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Back to Login</span>
+            </Button>
+            <div className="text-right">
+              <span className="text-2xl font-bold text-primary">{Math.round(progress)}%</span>
+              <p className="text-xs text-muted-foreground">Complete</p>
+            </div>
           </div>
         </div>
 

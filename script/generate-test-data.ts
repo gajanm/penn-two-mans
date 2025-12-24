@@ -99,9 +99,9 @@ function generateSurveyAnswers(): Record<string, any> {
     q1_looking_for: randomChoice(relationshipGoals),
     q2_who_to_meet: "Anyone at Penn — age is just a number", // Always permissive for test data
     q_race_ethnicity: randomChoices(races, Math.floor(Math.random() * 3) + 1),
-    q_preferred_race_ethnicity: ["No preference", ...randomChoices(races, 2)],
+    q_preferred_race_ethnicity: ["No preference"], // Always "No preference" for easier matching
     q_religious_affiliation: randomChoices(religions, Math.floor(Math.random() * 2) + 1),
-    q_preferred_religious_affiliation: ["No preference", ...randomChoices(religions, 2)],
+    q_preferred_religious_affiliation: ["No preference"], // Always "No preference" for easier matching
     q3_friday_night: randomChoice(fridayNights),
     q4_humor: randomChoice(humorStyles),
     q5_argument: randomChoice([
@@ -260,14 +260,14 @@ async function generateTestData() {
   console.log("🧪 GENERATING TEST DATA FOR MATCHING ALGORITHM");
   console.log("=".repeat(60));
 
-  const numMen = 20; // 20 men = 10 men's duos
-  const numWomen = 20; // 20 women = 10 women's duos
+  const numMen = 200; // 200 men = 100 men's duos
+  const numWomen = 200; // 200 women = 100 women's duos
   const totalUsers = numMen + numWomen;
 
   console.log(`\n📊 Generating ${totalUsers} test users:`);
   console.log(`   👨 ${numMen} men (will create ${numMen / 2} men's duos)`);
   console.log(`   👩 ${numWomen} women (will create ${numWomen / 2} women's duos)`);
-  console.log(`   🎯 Expected: ${(numMen / 2) * (numWomen / 2)} possible matches\n`);
+  console.log(`   🎯 Expected: up to ${Math.min(numMen / 2, numWomen / 2)} matches (${(numMen / 2) * (numWomen / 2)} possible pairs)\n`);
 
   const menUsers: TestUser[] = [];
   const womenUsers: TestUser[] = [];
@@ -276,7 +276,7 @@ async function generateTestData() {
   // Generate men - all same graduation year
   for (let i = 1; i <= numMen; i++) {
     menUsers.push({
-      email: `test.men${i}@penn.edu`,
+      email: `test.men${i}@upenn.edu`,
       password: "testpassword123",
       full_name: `Test Man ${i}`,
       gender: "Male",
@@ -289,7 +289,7 @@ async function generateTestData() {
   // Generate women - all same graduation year
   for (let i = 1; i <= numWomen; i++) {
     womenUsers.push({
-      email: `test.women${i}@penn.edu`,
+      email: `test.women${i}@upenn.edu`,
       password: "testpassword123",
       full_name: `Test Woman ${i}`,
       gender: "Female",
@@ -299,15 +299,22 @@ async function generateTestData() {
     });
   }
 
-  // Create all users
+  // Create all users (batch processing for better performance)
   console.log("👥 Creating users...");
-  for (const user of [...menUsers, ...womenUsers]) {
-    const userId = await createTestUser(user);
-    if (userId) {
-      createdUserIds.push(userId);
-      console.log(`   ✅ Created: ${user.full_name} (${user.email})`);
-    } else {
-      console.log(`   ❌ Failed: ${user.full_name}`);
+  let createdCount = 0;
+  const batchSize = 10; // Process in batches to avoid overwhelming the API
+  
+  for (let i = 0; i < [...menUsers, ...womenUsers].length; i += batchSize) {
+    const batch = [...menUsers, ...womenUsers].slice(i, i + batchSize);
+    const batchPromises = batch.map(user => createTestUser(user));
+    const batchResults = await Promise.all(batchPromises);
+    
+    const batchCreated = batchResults.filter(id => id !== null) as string[];
+    createdUserIds.push(...batchCreated);
+    createdCount += batchCreated.length;
+    
+    if (createdCount % 50 === 0 || createdCount === totalUsers) {
+      console.log(`   ✅ Created ${createdCount}/${totalUsers} users...`);
     }
   }
 

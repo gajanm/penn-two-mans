@@ -185,7 +185,7 @@ export default function Auth() {
               <Heart className="w-6 h-6 fill-current" />
             </div>
             <h1 className="font-heading font-bold text-3xl text-foreground">
-              Welcome to Penn Double Date
+              Welcome to Penn Double It
             </h1>
             <p className="text-muted-foreground mt-2">
               {mode === "login"
