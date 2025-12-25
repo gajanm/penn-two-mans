@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { dateSpots } from "@/lib/mockData";
-import { MapPin, Heart, DollarSign, Star } from "lucide-react";
+import { MapPin, DollarSign, Star } from "lucide-react";
+import { DoubleCherries } from "@/components/ui/double-cherries";
 import { cn } from "@/lib/utils";
 
 export default function DateIdeas() {
@@ -97,7 +98,7 @@ function DateCard({ spot, index }: { spot: any, index: number }) {
                 : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
             )}
           >
-            <Heart className={cn("mr-2 w-4 h-4", voted && "fill-current")} />
+            <DoubleCherries className="mr-2 w-4 h-4" />
             {voted ? "We'd love this!" : "Vote for this spot"}
           </Button>
         </CardContent>

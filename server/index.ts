@@ -3,6 +3,8 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import path from "path";
+import fs from "fs";
 
 const app = express();
 const httpServer = createServer(app);
@@ -61,29 +63,51 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  await registerRoutes(httpServer, app);
+  try {
+    await registerRoutes(httpServer, app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+    // Serve attached_assets folder
+    const attachedAssetsPath = path.resolve(import.meta.dirname, "..", "attached_assets");
+    if (fs.existsSync(attachedAssetsPath)) {
+      app.use("/attached_assets", express.static(attachedAssetsPath));
+    }
 
-    res.status(status).json({ message });
-    throw err;
-  });
+    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
 
-  if (process.env.NODE_ENV === "production") {
-    serveStatic(app);
-  } else {
-    const { setupVite } = await import("./vite");
-    await setupVite(httpServer, app);
+      res.status(status).json({ message });
+      throw err;
+    });
+
+    if (process.env.NODE_ENV === "production") {
+      serveStatic(app);
+    } else {
+      const { setupVite } = await import("./vite");
+      await setupVite(httpServer, app);
+    }
+
+    const port = parseInt(process.env.PORT || "5001", 10);
+    
+    httpServer.on("error", (err: NodeJS.ErrnoException) => {
+      if (err.code === "EADDRINUSE") {
+        log(`Port ${port} is already in use. Please stop the other process or use a different port.`, "error");
+        process.exit(1);
+      } else {
+        log(`Server error: ${err.message}`, "error");
+        process.exit(1);
+      }
+    });
+
+    httpServer.listen(
+      port,
+      "0.0.0.0",
+      () => {
+        log(`serving on port ${port}`);
+      },
+    );
+  } catch (error) {
+    log(`Failed to start server: ${error instanceof Error ? error.message : String(error)}`, "error");
+    process.exit(1);
   }
-
-  const port = parseInt(process.env.PORT || "5001", 10);
-  httpServer.listen(
-    port,
-    "0.0.0.0",
-    () => {
-      log(`serving on port ${port}`);
-    },
-  );
 })();

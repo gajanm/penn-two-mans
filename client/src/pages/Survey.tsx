@@ -7,7 +7,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { ArrowRight, ArrowLeft, Heart, Sparkles, Users, Calendar, MessageCircle, Zap, Check, User, Search, Loader2 } from "lucide-react";
+import { ArrowRight, ArrowLeft, Sparkles, Users, Calendar, MessageCircle, Zap, Check, User, Search, Loader2 } from "lucide-react";
+import { DoubleCherries } from "@/components/ui/double-cherries";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -15,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const sections = [
   { id: "about", title: "About You", description: "Basic info", icon: User, color: "from-violet-500 to-purple-500" },
-  { id: "basics", title: "The Basics", description: "What you're looking for", icon: Heart, color: "from-rose-500 to-pink-500" },
+  { id: "basics", title: "The Basics", description: "What you're looking for", icon: DoubleCherries, color: "from-rose-500 to-pink-500" },
   { id: "personality", title: "Personality & Energy", description: "Vibe check", icon: Users, color: "from-emerald-500 to-teal-500" },
   { id: "life", title: "Lifestyle", description: "How you live & go out", icon: Calendar, color: "from-blue-500 to-indigo-500" },
   { id: "connection", title: "Connection", description: "How you interact", icon: MessageCircle, color: "from-cyan-500 to-blue-500" },
@@ -421,7 +422,11 @@ export default function Survey() {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${sections[currentSection].color} flex items-center justify-center shadow-lg`}>
-              <SectionIcon className="w-5 h-5 text-white" />
+              {SectionIcon === DoubleCherries ? (
+                <DoubleCherries className="w-5 h-5" />
+              ) : (
+                <SectionIcon className="w-5 h-5 text-white" />
+              )}
             </div>
             <div>
               <h2 className="font-heading font-bold text-lg">{sections[currentSection].title}</h2>

@@ -14,7 +14,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, Heart, Mail, Lock } from "lucide-react";
+import { ArrowRight, Mail, Lock } from "lucide-react";
+import { DoubleCherries } from "@/components/ui/double-cherries";
 import collageImage from "@assets/generated_images/collage_style_image_of_philadelphia_romantic_spots..png";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -182,10 +183,10 @@ export default function Auth() {
         <div className="w-full max-w-md space-y-8">
           <div className="text-center">
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 text-primary mb-4">
-              <Heart className="w-6 h-6 fill-current" />
+              <DoubleCherries className="w-6 h-6" />
             </div>
             <h1 className="font-heading font-bold text-3xl text-foreground">
-              Welcome to Penn Double Date
+              Welcome to Penn Double-It
             </h1>
             <p className="text-muted-foreground mt-2">
               {mode === "login"

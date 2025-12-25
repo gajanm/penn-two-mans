@@ -1,6 +1,7 @@
 import React from "react";
 import { Link, useLocation } from "wouter";
-import { Home, Users, Heart, MessageCircle, MapPin, User, LogOut } from "lucide-react";
+import { Home, Users, MessageCircle, MapPin, User, LogOut } from "lucide-react";
+import { DoubleCherries } from "@/components/ui/double-cherries";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
@@ -21,7 +22,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const navItems = [
     { icon: Home, label: "Home", path: "/dashboard" },
     { icon: Users, label: "Partner", path: "/partner" },
-    { icon: Heart, label: "Match", path: "/match" },
+    { icon: DoubleCherries, label: "Match", path: "/match" },
     { icon: MessageCircle, label: "Chat", path: "/chat" },
     { icon: MapPin, label: "Dates", path: "/dates" },
     { icon: User, label: "Profile", path: "/settings" },
@@ -53,8 +54,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* Desktop Header */}
       <header className="hidden md:flex items-center justify-between px-8 py-4 bg-white/80 backdrop-blur-md border-b border-border sticky top-0 z-50">
         <div className="flex items-center gap-2">
-          <Heart className="w-6 h-6 text-primary fill-primary" />
-          <span className="font-heading font-bold text-xl tracking-tight text-foreground">Penn Double Date</span>
+          <DoubleCherries className="w-6 h-6" />
+          <span className="font-heading font-bold text-xl tracking-tight text-foreground">Penn Double-It</span>
         </div>
         <nav className="flex items-center gap-6">
           {navItems.map((item) => (
@@ -63,7 +64,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
                 location === item.path ? "text-primary" : "text-muted-foreground"
               )}>
-                <item.icon className="w-4 h-4" />
+                {item.icon === DoubleCherries ? (
+                  <DoubleCherries className="w-4 h-4" />
+                ) : (
+                  <item.icon className="w-4 h-4" />
+                )}
                 {item.label}
               </a>
             </Link>
@@ -104,7 +109,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               "flex flex-col items-center justify-center gap-1 p-2 rounded-lg transition-colors w-full",
               location === item.path ? "text-primary" : "text-muted-foreground"
             )}>
-              <item.icon className={cn("w-6 h-6", location === item.path && "fill-current")} />
+              {item.icon === DoubleCherries ? (
+                <DoubleCherries className="w-6 h-6" />
+              ) : (
+                <item.icon className={cn("w-6 h-6", location === item.path && "fill-current")} />
+              )}
               <span className="text-[10px] font-medium">{item.label}</span>
             </a>
           </Link>
